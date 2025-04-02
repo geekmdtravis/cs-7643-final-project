@@ -1,12 +1,26 @@
-name: cs-7643-final
+name: cs7643-project
 channels:
-  - https://repo.anaconda.com/pkgs/main
-  - https://repo.anaconda.com/pkgs/r
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
 dependencies:
   - python=3.12
-  - pytorch-cuda=12.4
-  - pytorch==2.5.1
-  - torchaudio==2.5.1
-  - torchvision==0.20.1
-  - anaconda::pandas
-prefix: /home/geekmdtravis/anaconda3/envs/cs-7643-final
+  - pip>=22.0
+  - pytorch>=2.0.0
+  - torchvision>=0.15.0
+  - pytorch-cuda=11.8
+  - numpy>=1.22.0
+  - pandas>=1.5.0
+  - pillow>=9.0.0
+  - matplotlib>=3.5.0
+  - seaborn>=0.12.0
+  - scikit-learn>=1.0.0
+  - tqdm>=4.65.0
+  - wandb>=0.15.0 # For experiment tracking
+  - timm>=1.0.0 # For Vision Transformer models
+  - pip:
+      - kagglehub>=0.1.0 # For downloading dataset
+      - pytorch-lightning>=2.0.0 # Optional: for structured training loops
+      - albumentations>=1.3.0 # For advanced image augmentations
+      - grad-cam>=1.4.0 # For visualization (TODO)
