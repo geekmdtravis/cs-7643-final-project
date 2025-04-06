@@ -1,3 +1,8 @@
+"""
+Download the NIH Chest X-ray dataset using kagglehub.
+This script downloads the dataset and provides a dataclass to hold the file paths.
+"""
+
 from pathlib import Path
 from dataclasses import dataclass
 import sys
@@ -10,20 +15,20 @@ class FilePaths:
     Class to hold file paths for the NIH Chest X-ray dataset.
     """
 
-    csv_dir: Path | None = None
-    images_dir: Path | None = None
-    train_val_list: Path | None = None
-    test_list: Path | None = None
+    csv_dir: Path = Path()
+    images_dir: Path = Path()
+    train_val_list: Path = Path()
+    test_list: Path = Path()
 
     def __post_init__(self):
-        if self.csv_dir is None:
-            self.csv_dir = Path()
-        if self.images_dir is None:
-            self.images_dir = Path()
-        if self.train_val_list is None:
-            self.train_val_list = Path()
-        if self.test_list is None:
-            self.test_list = Path()
+        if not self.csv_dir.exists():
+            raise FileNotFoundError(f"CSV directory not found: {self.csv_dir}")
+        if not self.images_dir.exists():
+            raise FileNotFoundError(f"Images directory not found: {self.images_dir}")
+        if not self.train_val_list.exists():
+            raise FileNotFoundError(f"Train/Val list not found: {self.train_val_list}")
+        if not self.test_list.exists():
+            raise FileNotFoundError(f"Test list not found: {self.test_list}")
 
     def __repr__(self):
         return f"FilePaths(csv_dir={self.csv_dir}, images_dir={self.images_dir}, train_val_list={self.train_val_list}, test_list={self.test_list})"
