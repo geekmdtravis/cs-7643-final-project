@@ -6,7 +6,9 @@ import os
 from PIL import Image
 import torchvision.transforms.functional as TF
 from data import download_dataset
-from utils import pad_image, embed_clinical_data_into_image
+from utils import pad_image, embed_clinical_data_into_image, Config
+
+cfg = Config()
 
 paths = download_dataset()
 
