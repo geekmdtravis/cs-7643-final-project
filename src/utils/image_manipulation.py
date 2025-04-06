@@ -37,13 +37,13 @@ def embed_clinical_data_into_image(
     gender: Literal["male", "female"],
     xr_pos: Literal["AP", "PA"],
     xr_count: int,
-    padding_size: int = 16,
+    matrix_size: int = 16,
 ) -> torch.Tensor:
     """
     Embed clinical data into the image tensor. The clinical data is embedded as
     a matrix in the upper-left corner of the image, occupying a total region of
-    padding_size x padding_size pixels. This region is divided into four quadrants,
-    each of size (padding_size // 2) x (padding_size // 2). It will be added to all channels
+    matrix_size x matrix_size pixels. This region is divided into four quadrants,
+    each of size (matrix_size // 2) x (matrix_size // 2). It will be added to all channels
     of the image. The quadrants represent the clinical data as follows:
 
     - Top-left quadrant (0,0): Scaled age (0-120) to 0-1.
@@ -57,7 +57,7 @@ def embed_clinical_data_into_image(
         gender (Literal): The gender of the patient ('male' or 'female').
         xr_pos (Literal): The position of the X-ray ('AP' or 'PA').
         xr_count (int): The number of X-rays taken (0-10).
-        padding_size (int): The total size (height and width) of the embedded clinical data
+        matrix_size (int): The total size (height and width) of the embedded clinical data
             matrix. Must be an even integer. Defaults to 16, matching the ViT patch size.
 
     Returns:
@@ -67,7 +67,7 @@ def embed_clinical_data_into_image(
         ValueError: If the input image is not a 3D tensor or if the dimensions are too small.
         ValueError: If age is not between 0 and 120.
         ValueError: If xr_count is not greater than 0.
-        ValueError: If padding_size is not a positive, even integer.
+        ValueError: If matrix_size is not a positive, even integer.
     """
     # --- Input Validation ---
     if len(image.shape) != 3:
@@ -75,22 +75,22 @@ def embed_clinical_data_into_image(
             "embed_clinical_data_into_image: Input image must be a 3D tensor (C, H, W)."
         )
 
-    if padding_size <= 0:
+    if matrix_size <= 0:
         raise ValueError(
-            f"embed_clinical_data_into_image: padding_size ({padding_size}) must be a positive integer."
+            f"embed_clinical_data_into_image: matrix_size ({matrix_size}) must be a positive integer."
         )
-    if padding_size % 2 != 0:
+    if matrix_size % 2 != 0:
         raise ValueError(
-            f"embed_clinical_data_into_image: padding_size ({padding_size}) must be an even integer."
+            f"embed_clinical_data_into_image: matrix_size ({matrix_size}) must be an even integer."
         )
 
     _, height, width = image.shape
-    required_dim = padding_size  # Check against the total embedding size
+    required_dim = matrix_size  # Check against the total embedding size
     if height < required_dim or width < required_dim:
         raise ValueError(
             f"embed_clinical_data_into_image: Image dimensions ({height}x{width}) "
             f"must be at least {required_dim}x{required_dim} to embed data "
-            f"with padding_size={padding_size}."
+            f"with matrix_size={matrix_size}."
         )
 
     if not (0 <= age <= 120):
@@ -123,18 +123,18 @@ def embed_clinical_data_into_image(
     # --- Embedding ---
     # Create a copy to avoid modifying the original tensor
     image_copy = image.clone()
-    quad_size = padding_size // 2
+    quad_size = matrix_size // 2
 
     # Embed Age (Top-left quadrant)
     image_copy[:, 0:quad_size, 0:quad_size] = age_scaled
 
     # Embed Gender (Top-right quadrant)
-    image_copy[:, 0:quad_size, quad_size:padding_size] = gender_val
+    image_copy[:, 0:quad_size, quad_size:matrix_size] = gender_val
 
     # Embed X-ray Position (Bottom-left quadrant)
-    image_copy[:, quad_size:padding_size, 0:quad_size] = xr_pos_val
+    image_copy[:, quad_size:matrix_size, 0:quad_size] = xr_pos_val
 
     # Embed X-ray Count (Bottom-right quadrant)
-    image_copy[:, quad_size:padding_size, quad_size:padding_size] = xr_count_scaled
+    image_copy[:, quad_size:matrix_size, quad_size:matrix_size] = xr_count_scaled
 
     return image_copy

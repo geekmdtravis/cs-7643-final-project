@@ -1,1 +1,2 @@
-src/download/downloaded_data/*
+**/*/__pycache__/
+artifacts/

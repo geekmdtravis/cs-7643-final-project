@@ -1,9 +1,13 @@
+"""Unit tests for image manipulation functions."""
+
 import unittest
 import torch
-from utils.image_manipulation import embed_clinical_data_into_image, pad_image
+from src.utils.image_manipulation import embed_clinical_data_into_image, pad_image
 
 
 class TestPadImage(unittest.TestCase):
+    """Unit tests for the pad_image function."""
+
     def setUp(self):
         """Create common test data."""
         self.image = torch.zeros(3, 32, 32)
@@ -42,6 +46,8 @@ class TestPadImage(unittest.TestCase):
 
 
 class TestEmbedClinicalData(unittest.TestCase):
+    """Unit tests for the embed_clinical_data_into_image function."""
+
     def setUp(self):
         """Create common test data."""
         self.image = torch.zeros(3, 32, 32)
@@ -54,7 +60,7 @@ class TestEmbedClinicalData(unittest.TestCase):
             gender="female",
             xr_pos="PA",
             xr_count=5,
-            padding_size=16,
+            matrix_size=16,
         )
 
         # Check shape preservation
@@ -115,7 +121,7 @@ class TestEmbedClinicalData(unittest.TestCase):
                     gender="male",
                     xr_pos="AP",
                     xr_count=5,
-                    padding_size=size,
+                    matrix_size=size,
                 )
 
     def test_image_size_validation(self):
@@ -128,7 +134,7 @@ class TestEmbedClinicalData(unittest.TestCase):
                 gender="male",
                 xr_pos="AP",
                 xr_count=5,
-                padding_size=16,
+                matrix_size=16,
             )
 
     def test_age_validation(self):
