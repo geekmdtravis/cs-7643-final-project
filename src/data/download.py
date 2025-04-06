@@ -78,7 +78,7 @@ def download_dataset() -> FilePaths:
     except RuntimeError as e:
         print(f"Runtime error downloading dataset: {e}", file=sys.stderr)
         sys.exit(1)
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         print(f"An unexpected error occurred: {e}", file=sys.stderr)
         sys.exit(1)
 
