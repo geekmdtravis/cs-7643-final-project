@@ -26,3 +26,5 @@ dependencies:
       - grad-cam>=1.4.0 # For visualization (TODO)
       - python-dotenv # For environmental settings/config
       - ipykernel
+      - requests
+      - pillow
