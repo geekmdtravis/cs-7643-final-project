@@ -3,7 +3,7 @@
 import torch
 
 
-def generate_image_lables(finding_labels: str) -> torch.Tensor:
+def generate_image_labels(finding_labels: str) -> torch.Tensor:
     """
     Generate image labels from finding labels.
 
@@ -11,7 +11,7 @@ def generate_image_lables(finding_labels: str) -> torch.Tensor:
         finding_labels (str): A string of finding labels separated by '|'.
 
     Returns:
-        torch.Tensor: A tensor representing the image labels.
+        torch.Tensor: A tensor representing the image labels of shape (15,).
     """
     _fl = finding_labels.lower()
 

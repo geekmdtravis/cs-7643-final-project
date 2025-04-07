@@ -2,7 +2,7 @@
 
 import unittest
 import torch
-from src.utils.preprocessing import generate_image_lables
+from src.utils.preprocessing import generate_image_labels
 
 
 class TestPreprocessing(unittest.TestCase):
@@ -29,7 +29,7 @@ class TestPreprocessing(unittest.TestCase):
         ]
 
         for idx, condition in enumerate(conditions):
-            labels = generate_image_lables(condition)
+            labels = generate_image_labels(condition)
             self.assertIsInstance(labels, torch.Tensor)
             self.assertEqual(labels.shape, (15,))
             self.assertEqual(labels.dtype, torch.float32)
@@ -43,7 +43,7 @@ class TestPreprocessing(unittest.TestCase):
     def test_multiple_labels(self):
         """Test detection of multiple conditions."""
         input_str = "Atelectasis|Edema|Mass"
-        labels = generate_image_lables(input_str)
+        labels = generate_image_labels(input_str)
 
         self.assertEqual(labels[0], 1)  # Atelectasis
         self.assertEqual(labels[3], 1)  # Edema
@@ -55,30 +55,30 @@ class TestPreprocessing(unittest.TestCase):
         variations = ["ATELECTASIS", "atelectasis", "Atelectasis", "aTeLeCtAsIs"]
 
         for variant in variations:
-            labels = generate_image_lables(variant)
+            labels = generate_image_labels(variant)
             self.assertEqual(labels[0], 1)
             self.assertEqual(sum(labels), 1)
 
     def test_no_finding(self):
         """Test the 'No Finding' case."""
-        labels = generate_image_lables("No Finding")
+        labels = generate_image_labels("No Finding")
         self.assertEqual(labels[10], 1)
         self.assertEqual(sum(labels), 1)
 
     def test_empty_string(self):
         """Test empty string input."""
         with self.assertRaises(ValueError):
-            generate_image_lables("")
+            generate_image_labels("")
 
     def test_invalid_label(self):
         """Test with invalid/non-existent condition."""
         with self.assertRaises(ValueError):
-            generate_image_lables("NonExistentCondition")
+            generate_image_labels("NonExistentCondition")
 
     def test_mixed_valid_invalid(self):
         """Test mixture of valid and invalid labels."""
         with self.assertRaises(ValueError):
-            generate_image_lables("Atelectasis|NonExistentCondition")
+            generate_image_labels("Atelectasis|NonExistentCondition")
 
     def test_all_found_labels(self):
         """Test all labels are found."""
@@ -100,14 +100,14 @@ class TestPreprocessing(unittest.TestCase):
                 "Pneumothorax",
             ]
         )
-        labels = generate_image_lables(input_str)
+        labels = generate_image_labels(input_str)
         self.assertEqual(sum(labels), 14)  # All labels except "No Finding" should be 1
         self.assertEqual(labels[10], 0)
 
     def test_shape(self):
         """Test the shape of the output tensor."""
         input_str = "Atelectasis|Edema|Mass"
-        labels = generate_image_lables(input_str)
+        labels = generate_image_labels(input_str)
         self.assertEqual(labels.shape, (15,))
         self.assertEqual(labels.dtype, torch.float32)
 
