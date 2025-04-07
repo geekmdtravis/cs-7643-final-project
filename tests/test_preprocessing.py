@@ -1,14 +1,18 @@
 """Unit tests for preprocessing functions."""
 
+import random
 import unittest
 import shutil
 import tempfile
 import pandas as pd
 import torch
+import numpy as np
 from src.utils.preprocessing import (
     generate_image_labels,
     convert_agestr_to_years,
     create_working_tabular_df,
+    set_seed,
+    randomize_df,
 )
 
 
@@ -255,6 +259,87 @@ class TestTabularDataPreprocessing(unittest.TestCase):
         self.assertEqual(result_df["patientGender"].iloc[1], 1)  # f
         self.assertEqual(result_df["viewPosition"].iloc[0], 0)  # pa
         self.assertEqual(result_df["viewPosition"].iloc[1], 1)  # ap
+
+
+class TestRandomization(unittest.TestCase):
+    """Unit tests for the DataFrame randomization function."""
+
+    def setUp(self):
+        """Set up test data."""
+        self.test_df = pd.DataFrame(
+            {"A": range(10), "B": range(10, 20), "C": list("abcdefghij")}
+        )
+
+    def test_row_count_preservation(self):
+        """Test that the number of rows remains the same after randomization."""
+        result_df = randomize_df(self.test_df)
+        self.assertEqual(len(result_df), len(self.test_df))
+
+    def test_column_preservation(self):
+        """Test that all columns are preserved after randomization."""
+        result_df = randomize_df(self.test_df)
+        self.assertEqual(list(result_df.columns), list(self.test_df.columns))
+
+    def test_content_preservation(self):
+        """Test that all values are preserved after randomization."""
+        result_df = randomize_df(self.test_df)
+        for col in self.test_df.columns:
+            self.assertEqual(
+                sorted(result_df[col].tolist()), sorted(self.test_df[col].tolist())
+            )
+
+    def test_different_order(self):
+        """Test that the order is actually randomized."""
+        set_seed(42)  # Set seed for reproducibility
+        result_df = randomize_df(self.test_df)
+        # Check if at least one row is in a different position
+        any_different = False
+        for i in range(len(self.test_df)):
+            if not (result_df.iloc[i] == self.test_df.iloc[i]).all():
+                any_different = True
+                break
+        self.assertTrue(any_different)
+
+    def test_index_reset(self):
+        """Test that the index is reset after randomization."""
+        result_df = randomize_df(self.test_df)
+        self.assertEqual(list(result_df.index), list(range(len(self.test_df))))
+
+
+class TestSeedSetting(unittest.TestCase):
+    """Unit tests for the seed setting function."""
+
+    def test_reproducible_torch_random(self):
+        """Test that torch.random produces same numbers with same seed."""
+        set_seed(42)
+        random1 = torch.rand(5)
+        set_seed(42)
+        random2 = torch.rand(5)
+        self.assertTrue(torch.equal(random1, random2))
+
+    def test_reproducible_numpy_random(self):
+        """Test that numpy.random produces same numbers with same seed."""
+        set_seed(42)
+        random1 = np.random.rand(5)
+        set_seed(42)
+        random2 = np.random.rand(5)
+        np.testing.assert_array_equal(random1, random2)
+
+    def test_reproducible_python_random(self):
+        """Test that random produces same numbers with same seed."""
+        set_seed(42)
+        random1 = [random.random() for _ in range(5)]
+        set_seed(42)
+        random2 = [random.random() for _ in range(5)]
+        self.assertEqual(random1, random2)
+
+    def test_different_seeds(self):
+        """Test that different seeds produce different random numbers."""
+        set_seed(42)
+        random1 = torch.rand(5)
+        set_seed(43)
+        random2 = torch.rand(5)
+        self.assertFalse(torch.equal(random1, random2))
 
 
 if __name__ == "__main__":

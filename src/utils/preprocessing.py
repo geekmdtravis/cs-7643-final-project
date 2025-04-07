@@ -2,6 +2,8 @@
 
 import pandas as pd
 import torch
+import numpy as np
+import random
 
 
 def generate_image_labels(finding_labels: str) -> torch.Tensor:
@@ -160,3 +162,32 @@ def create_working_tabular_df(df: pd.DataFrame) -> pd.DataFrame:
             working_df.at[idx, col] = value.item()
 
     return working_df
+
+
+def randomize_df(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Randomize the order of rows in a DataFrame.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame to be randomized.
+
+    Returns:
+        pd.DataFrame: Randomized DataFrame.
+    """
+    return df.sample(frac=1).reset_index(drop=True)
+
+
+def set_seed(seed: int):
+    """
+    Set the random seed for reproducibility.
+
+    Args:
+        seed (int): The seed value to set.
+    """
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    torch.random.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
