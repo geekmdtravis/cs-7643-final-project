@@ -1,5 +1,6 @@
 """Preprocessing functions for medical image datasets."""
 
+import pandas as pd
 import torch
 
 
@@ -58,3 +59,104 @@ def generate_image_labels(finding_labels: str) -> torch.Tensor:
     image_labels[14] = 1 if "pneumothorax" in _fl else 0
 
     return image_labels
+
+
+def convert_agestr_to_years(agestr: str) -> float:
+    """
+    Convert age string to years.
+
+    Args:
+        agestr (str): Age string in the format 'XXy' or 'XXm'.
+
+    Returns:
+        float: Age in years
+    """
+    _agestr = agestr.strip().lower()
+    if not _agestr:
+        raise ValueError("Age string cannot be empty.")
+    if not (len(_agestr) == 4):
+        raise ValueError(f"Invalid age string length: {agestr}")
+    if not (_agestr[:-1].isdigit() and _agestr[-1] in ["y", "m", "d", "w"]):
+        raise ValueError(f"Invalid age string format: {agestr}")
+
+    age_value = float(_agestr[:-1])
+    if _agestr.endswith("y"):
+        return age_value
+    elif _agestr.endswith("m"):
+        return age_value / 12
+    elif _agestr.endswith("d"):
+        return age_value / 365
+    elif _agestr.endswith("w"):
+        return age_value / 52
+    else:
+        raise ValueError(f"Invalid age string format: {agestr}")
+
+
+def create_working_tabular_df(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Create a working DataFrame for tabular data with standardized features. Of note,
+    none of the preprocessing steps here will produce data leakage, as the
+    transformations are applied element-wise and do not depend on the entire dataset.
+    This function is designed to be used with the NIH Chest X-ray dataset.
+
+    The function performs the following transformations:
+    - Selects and renames relevant columns
+    - Converts patient age from string to float (in years)
+    - Converts patient gender to a binary 1/0 encoding (0=M, 1=F)
+    - Converts view position to a binary 1/0 encoding (0=PA, 1=AP)
+    - Generates one-hot encoded disease labels for 14 conditions and 1 "no finding"
+
+    Args:
+        df (pd.DataFrame): Input DataFrame containing medical image metadata
+        from the NIH Chest X-ray dataset.
+
+    Returns:
+        pd.DataFrame: Processed DataFrame with the following columns:
+            - imageIndex: Original image filename
+            - followUpNumber: Patient follow-up visit number
+            - patientAge: Age in years (float)
+            - patientGender: Binary encoded gender (0=M, 1=F)
+            - viewPosition: Binary encoded position (0=PA, 1=AP)
+            - label_{condition}: One-hot encoded disease labels (15 columns)
+    """
+    # Select and rename relevant columns
+    working_df = pd.DataFrame()
+    working_df["imageIndex"] = df["Image Index"]
+    working_df["followUpNumber"] = df["Follow-up #"]
+    working_df["patientAge"] = df["Patient Age"].apply(convert_agestr_to_years)
+
+    # Convert gender to binary (case-insensitive)
+    working_df["patientGender"] = df["Patient Gender"].str.upper().map({"M": 0, "F": 1})
+
+    # Convert view position to binary (case-insensitive)
+    working_df["viewPosition"] = df["View Position"].str.upper().map({"PA": 0, "AP": 1})
+    label_names = [
+        "label_atelectasis",
+        "label_cardiomegaly",
+        "label_consolidation",
+        "label_edema",
+        "label_effusion",
+        "label_emphysema",
+        "label_fibrosis",
+        "label_hernia",
+        "label_infiltration",
+        "label_mass",
+        "label_no_finding",
+        "label_nodule",
+        "label_pleural_thickening",
+        "label_pneumonia",
+        "label_pneumothorax",
+    ]
+    # Generate one-hot encoded labels
+    for idx, row in df.iterrows():
+        labels = generate_image_labels(row["Finding Labels"])
+        if idx == 0:  # First iteration, create column names
+
+            for name in label_names:
+                working_df[name] = 0
+
+        # Update the label columns for this row
+        for col, value in zip(label_names, labels):
+            working_df.at[idx, col] = value.item()
+
+    return working_df
