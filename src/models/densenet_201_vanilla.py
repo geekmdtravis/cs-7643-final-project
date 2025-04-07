@@ -1,3 +1,7 @@
+"""
+DenseNet-201 Vanilla Model
+"""
+
 import torch
 import torch.nn as nn
 from torchvision.models import densenet201, DenseNet201_Weights
