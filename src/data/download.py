@@ -15,14 +15,14 @@ class FilePaths:
     Class to hold file paths for the NIH Chest X-ray dataset.
     """
 
-    csv_dir: Path = Path()
+    clinical_data: Path = Path()
     images_dir: Path = Path()
     train_val_list: Path = Path()
     test_list: Path = Path()
 
     def __post_init__(self):
-        if not self.csv_dir.exists():
-            raise FileNotFoundError(f"CSV directory not found: {self.csv_dir}")
+        if not self.clinical_data.exists():
+            raise FileNotFoundError(f"Clinical data not found: {self.clinical_data}")
         if not self.images_dir.exists():
             raise FileNotFoundError(f"Images directory not found: {self.images_dir}")
         if not self.train_val_list.exists():
@@ -31,10 +31,10 @@ class FilePaths:
             raise FileNotFoundError(f"Test list not found: {self.test_list}")
 
     def __repr__(self):
-        return f"FilePaths(csv_dir={self.csv_dir}, images_dir={self.images_dir}, train_val_list={self.train_val_list}, test_list={self.test_list})"
+        return f"FilePaths(clinical_data={self.clinical_data}, images_dir={self.images_dir}, train_val_list={self.train_val_list}, test_list={self.test_list})"
 
     def __str__(self):
-        return f"FilePaths(\n\tcsv_dir={self.csv_dir}, \n\timages_dir={self.images_dir}, \n\ttrain_val_list={self.train_val_list}, \n\ttest_list={self.test_list})"
+        return f"FilePaths(\n\tclinical_data={self.clinical_data}, \n\timages_dir={self.images_dir}, \n\ttrain_val_list={self.train_val_list}, \n\ttest_list={self.test_list})"
 
 
 def download_dataset() -> FilePaths:
@@ -84,12 +84,12 @@ def download_dataset() -> FilePaths:
 
     # Define file paths
     cache_path = Path(cache_path)
-    csv_dir = cache_path / "Data_Entry_2017.csv"
+    clinical_data = cache_path / "Data_Entry_2017.csv"
     images_dir = cache_path / "images-224/images-224/"
     train_val_list = cache_path / "train_val_list_NIH.txt"
     test_list = cache_path / "test_list_NIH.txt"
     file_paths = FilePaths(
-        csv_dir=csv_dir,
+        clinical_data=clinical_data,
         images_dir=images_dir,
         train_val_list=train_val_list,
         test_list=test_list,
