@@ -6,8 +6,8 @@ import os
 import torch
 from PIL import Image
 import torchvision.transforms.functional as TF
-from data import download_dataset
-from utils import pad_image, embed_clinical_data_into_image, Config
+from src.data import download_dataset
+from src.utils import pad_image, embed_clinical_data_into_image, Config
 
 cfg = Config()
 

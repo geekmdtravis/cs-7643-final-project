@@ -5,7 +5,7 @@ import torch
 import torchvision.transforms as transforms
 from PIL import Image
 import requests
-from models import DenseNet201Vanilla
+from src.models import DenseNet201Vanilla
 
 
 def download_image(url) -> Image.Image:
