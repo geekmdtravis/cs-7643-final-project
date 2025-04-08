@@ -1,9 +1,9 @@
 """Preprocessing functions for medical image datasets."""
 
+import random
 import pandas as pd
 import torch
 import numpy as np
-import random
 
 
 def generate_image_labels(finding_labels: str) -> torch.Tensor:
@@ -191,3 +191,27 @@ def set_seed(seed: int):
     torch.random.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
+
+
+def train_test_split(
+    df: pd.DataFrame, test_size: float = 0.2, seed: int = 42
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Split the DataFrame into training and testing sets.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame to be split.
+        test_size (float): Proportion of the DataFrame to include in the test split (0 < test_size < 1).
+        seed (int): Random seed for reproducibility.
+
+    Returns:
+        tuple: A tuple containing the training and testing DataFrames.
+
+    Raises:
+        ValueError: If test_size is not between 0 and 1 exclusive.
+    """
+    if test_size <= 0 or test_size >= 1:
+        raise ValueError("test_size must be between 0 and 1 exclusive")
+    train_df = df.sample(frac=1 - test_size, random_state=seed)
+    test_df = df.drop(train_df.index)
+    return train_df, test_df

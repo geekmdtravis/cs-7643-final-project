@@ -13,6 +13,7 @@ from src.utils.preprocessing import (
     create_working_tabular_df,
     set_seed,
     randomize_df,
+    train_test_split,
 )
 
 
@@ -340,6 +341,68 @@ class TestSeedSetting(unittest.TestCase):
         set_seed(43)
         random2 = torch.rand(5)
         self.assertFalse(torch.equal(random1, random2))
+
+
+class TestTrainTestSplit(unittest.TestCase):
+    """Unit tests for the train test split function."""
+
+    def setUp(self):
+        """Set up test data."""
+        self.test_df = pd.DataFrame(
+            {"A": range(100), "B": range(100, 200), "C": list("abcdefghij" * 10)}
+        )
+
+    def test_split_proportions(self):
+        """Test that the split proportions are correct."""
+        test_sizes = [0.2, 0.3, 0.5]
+        for test_size in test_sizes:
+            train_df, test_df = train_test_split(self.test_df, test_size=test_size)
+            expected_test_size = int(len(self.test_df) * test_size)
+            self.assertEqual(len(test_df), expected_test_size)
+            self.assertEqual(len(train_df), len(self.test_df) - expected_test_size)
+
+    def test_deterministic_with_seed(self):
+        """Test that the split is deterministic with the same seed."""
+        train1, test1 = train_test_split(self.test_df, test_size=0.2, seed=42)
+        train2, test2 = train_test_split(self.test_df, test_size=0.2, seed=42)
+        pd.testing.assert_frame_equal(train1, train2)
+        pd.testing.assert_frame_equal(test1, test2)
+
+    def test_different_seeds(self):
+        """Test that different seeds produce different splits."""
+        train1, test1 = train_test_split(self.test_df, test_size=0.2, seed=42)
+        train2, test2 = train_test_split(self.test_df, test_size=0.2, seed=43)
+        self.assertFalse(train1.equals(train2))
+        self.assertFalse(test1.equals(test2))
+
+    def test_row_integrity(self):
+        """Test that rows are preserved and not modified after splitting."""
+        train_df, test_df = train_test_split(self.test_df)
+        combined_df = pd.concat([train_df, test_df])
+        combined_df = combined_df.sort_index()
+        self.test_df = self.test_df.sort_index()
+        pd.testing.assert_frame_equal(combined_df, self.test_df)
+
+    def test_mutually_exclusive_splits(self):
+        """Test that train and test sets have no overlapping rows."""
+        train_df, test_df = train_test_split(self.test_df)
+        train_indices = set(train_df.index)
+        test_indices = set(test_df.index)
+        self.assertEqual(len(train_indices.intersection(test_indices)), 0)
+
+    def test_empty_dataframe(self):
+        """Test handling of empty DataFrame."""
+        empty_df = pd.DataFrame()
+        train_df, test_df = train_test_split(empty_df)
+        self.assertTrue(train_df.empty)
+        self.assertTrue(test_df.empty)
+
+    def test_invalid_test_size(self):
+        """Test that invalid test_size raises ValueError."""
+        invalid_sizes = [-0.1, 0, 1.0, 1.1]
+        for size in invalid_sizes:
+            with self.assertRaises(ValueError):
+                train_test_split(self.test_df, test_size=size)
 
 
 if __name__ == "__main__":

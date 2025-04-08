@@ -1,22 +1,39 @@
-import torch
-import platform
+"""This script is used to run the main functionality of the application."""
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+import pandas as pd
+from src.utils import (
+    get_system_info,
+    randomize_df,
+    create_working_tabular_df,
+    set_seed,
+    train_test_split,
+)
+from src.data import download_dataset
 
-gpu_info = 'Not Detected'
-if torch.cuda.is_available():
-    gpu_info = f"GPU: {torch.cuda.get_device_name(0)}"
-    gpu_memory = f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.2f} GB"
+SEED = 42
 
-system_info = {
-    'OS': platform.system() + ' ' + platform.release(),
-    'CPU': platform.processor(),
-    'PyTorch Version': torch.__version__,
-    'Device': str(device),
-    'GPU Info': gpu_info
-}
+artifacts_dir = "artifacts"
 
-# Print system information
-print("\n=== System Information ===")
-for key, value in system_info.items():
-    print(f"{key}: {value}")
+
+def print_intro():
+    """Prints the introduction of the application."""
+    print("===============================================")
+    print("CS7643 Final Project - Multimodal Chest X-ray Classification")
+    print("-----------------------------------------------")
+    print(f"System Information:\n{get_system_info()}")
+    print("-----------------------------------------------")
+
+
+if __name__ == "__main__":
+    print_intro()
+    paths = download_dataset()
+    set_seed(SEED)
+    _df = pd.read_csv(paths.clinical_data)
+    _ppdf = create_working_tabular_df(_df)
+    df = randomize_df(_ppdf)
+
+    df_train, df_test = train_test_split(df, test_size=0.2, seed=SEED)
+    print("Saving train and test data to CSV files...")
+    df_train.to_csv("./artifacts/train.csv", index=False)
+    df_test.to_csv("./artifacts/test.csv", index=False)
+    print("Train and test data saved successfully.")
