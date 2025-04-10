@@ -167,10 +167,10 @@ def embed_clinical_data_into_image(
                 f"embed_clinical_data_into_image: Age ({a}) at index {i} must "
                 f"be between 0 and 120."
             )
-        if count <= 0:
+        if count < 0:
             raise ValueError(
-                f"embed_clinical_data_into_image: X-ray count ({count}) at index {i} "
-                f"must be between 1 and 10."
+                f"embed_clinical_data_into_image: X-ray follow-up ({count}) "
+                f"at index {i} must be greater than or equal to 0."
             )
         if g not in ["male", "female"]:
             raise ValueError(
