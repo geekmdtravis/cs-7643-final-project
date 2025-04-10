@@ -90,45 +90,24 @@ class TestChestXrayDataset(unittest.TestCase):
         """Test dataset initialization."""
         dataset = ChestXrayDataset(self.file_paths)
         self.assertEqual(len(dataset), 10)
-        self.assertEqual(dataset.mode, "image_only")
         self.assertIsInstance(dataset.transform, transforms.ToTensor)
 
-    def test_invalid_mode(self):
-        """Test initialization with invalid mode."""
-        with self.assertRaises(ValueError):
-            ChestXrayDataset(self.file_paths, mode="invalid_mode")
-
-    def test_image_only_mode(self):
-        """Test dataset in image_only mode."""
-        dataset = ChestXrayDataset(self.file_paths, mode="image_only")
-        image, labels = dataset[0]
-
-        self.assertIsInstance(image, torch.Tensor)
-        self.assertEqual(image.shape, (3, 32, 32))
-        self.assertIsInstance(labels, torch.Tensor)
-        self.assertEqual(labels.shape[0], 15)  # 15 possible conditions
-
-    def test_image_and_tabular_mode(self):
-        """Test dataset in image_and_tabular mode."""
-        dataset = ChestXrayDataset(self.file_paths, mode="image_and_tabular")
+    def test_getitem(self):
+        """Test dataset item retrieval."""
+        dataset = ChestXrayDataset(self.file_paths)
         image, tabular, labels = dataset[0]
 
+        # Test image tensor
         self.assertIsInstance(image, torch.Tensor)
         self.assertEqual(image.shape, (3, 32, 32))
+
+        # Test tabular features
         self.assertIsInstance(tabular, torch.Tensor)
         self.assertEqual(tabular.shape[0], 4)  # 4 tabular features
-        self.assertIsInstance(labels, torch.Tensor)
-        self.assertEqual(labels.shape[0], 15)
 
-    def test_embedded_image_mode(self):
-        """Test dataset in embedded_image mode."""
-        dataset = ChestXrayDataset(self.file_paths, mode="embedded_image")
-        image, labels = dataset[0]
-
-        self.assertIsInstance(image, torch.Tensor)
-        self.assertEqual(image.shape, (3, 32, 32))
+        # Test labels
         self.assertIsInstance(labels, torch.Tensor)
-        self.assertEqual(labels.shape[0], 15)
+        self.assertEqual(labels.shape[0], 15)  # 15 possible conditions
 
     def test_transform_application(self):
         """Test that transforms are correctly applied."""
@@ -136,7 +115,7 @@ class TestChestXrayDataset(unittest.TestCase):
             [transforms.ToTensor(), transforms.Normalize(mean=[0.485], std=[0.229])]
         )
         dataset = ChestXrayDataset(self.file_paths, transform=transform)
-        image, _ = dataset[0]
+        image, _, _ = dataset[0]
 
         self.assertIsInstance(image, torch.Tensor)
         self.assertEqual(image.shape, (3, 32, 32))
