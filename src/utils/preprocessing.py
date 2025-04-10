@@ -165,17 +165,18 @@ def create_working_tabular_df(df: pd.DataFrame) -> pd.DataFrame:
     return working_df
 
 
-def randomize_df(df: pd.DataFrame) -> pd.DataFrame:
+def randomize_df(df: pd.DataFrame, seed: int = None) -> pd.DataFrame:
     """
     Randomize the order of rows in a DataFrame.
 
     Args:
         df (pd.DataFrame): Input DataFrame to be randomized.
+        seed (int, optional): Random seed for reproducibility.
 
     Returns:
         pd.DataFrame: Randomized DataFrame.
     """
-    return df.sample(frac=1).reset_index(drop=True)
+    return df.sample(frac=1, random_state=seed).reset_index(drop=True)
 
 
 def set_seed(seed: int):
