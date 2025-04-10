@@ -42,11 +42,12 @@ def embed_clinical_data_into_image(
     matrix_size: int = 16,
 ) -> torch.Tensor:
     """
-    Embed clinical data into the image tensor(s). The clinical data is embedded as
-    a matrix in the upper-left corner of each image, occupying a total region of
-    matrix_size x matrix_size pixels. This region is divided into four quadrants,
-    each of size (matrix_size // 2) x (matrix_size // 2). It will be added to
-    all channels of the image. The quadrants represent the clinical data as follows:
+    Embed clinical data into the image tensor(s) in place. The clinical data is
+    embedded as a matrix in the upper-left corner of each image, occupying a
+    total region of matrix_size x matrix_size pixels. This region is
+    divided into four quadrants,each of size (matrix_size // 2) x (matrix_size // 2).
+    It will be added to all channels of the image. The quadrants represent
+    the clinical data as follows:
 
     - Top-left quadrant (0,0): Follow-up number (normalized to [0,1])
     - Top-right quadrant (0,1): Patient age (normalized to [0,1])
@@ -65,8 +66,11 @@ def embed_clinical_data_into_image(
         matrix_size (int): Size of embedding region. Must be even. Default: 16
 
     Returns:
-        torch.Tensor: The image tensor with embedded clinical data
+        torch.Tensor: A reference to image tensor with embedded clinical data
             in the top-left corner. Will have the same number of dimensions as input.
+            Of note: This function modifies the input image tensor in place, so
+            the original tensor will be changed. If you want to keep the
+            original tensor, consider making a copy before calling this function.
 
     Raises:
         ValueError: If the input image dimensions are invalid or too small.
