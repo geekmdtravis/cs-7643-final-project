@@ -1,0 +1,49 @@
+name: Lint
+
+on:
+  push:
+    branches:
+      - development
+      - "*/head"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Set up Conda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          python-version: "3.12"
+
+      - name: Install dependencies
+        shell: bash -l {0}
+        run: |
+          conda env create -f environment.yaml
+          conda activate cs7643-project
+
+      - name: Black
+        shell: bash -l {0}
+        run: |
+          conda activate cs7643-project
+          black --check src tests
+
+      - name: Flake8
+        shell: bash -l {0}
+        run: |
+          conda activate cs7643-project
+          flake8 src tests \
+            --max-line-length=88 \
+            --extend-ignore=E203,W503 \
+            --exclude=__pycache__,.git,*.pyc,*.egg-info,.eggs,*.egg

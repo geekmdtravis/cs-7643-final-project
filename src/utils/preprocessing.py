@@ -1,9 +1,10 @@
 """Preprocessing functions for medical image datasets."""
 
 import random
+
+import numpy as np
 import pandas as pd
 import torch
-import numpy as np
 
 
 def generate_image_labels(finding_labels: str) -> torch.Tensor:
@@ -201,7 +202,8 @@ def train_test_split(
 
     Args:
         df (pd.DataFrame): Input DataFrame to be split.
-        test_size (float): Proportion of the DataFrame to include in the test split (0 < test_size < 1).
+        test_size (float): Proportion of the DataFrame to include in the
+            test split (0 < test_size < 1).
         seed (int): Random seed for reproducibility.
 
     Returns:

@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Literal
+
 from dotenv import load_dotenv
 
 
@@ -175,4 +176,10 @@ class Config:
             raise TypeError("learning_rate must be a float")
 
     def __repr__(self):
-        return f"Config(num_workers={self.num_workers}, batch_size={self.batch_size}, num_epochs={self.num_epochs}, learning_rate={self.learning_rate}, optimizer={self.optimizer}, device={self.device})"
+        return (
+            f"Config(num_workers={self.num_workers}, "
+            f"batch_size={self.batch_size}, "
+            f"num_epochs={self.num_epochs}, "
+            f"learning_rate={self.learning_rate}, "
+            f"optimizer={self.optimizer}, device={self.device})"
+        )
