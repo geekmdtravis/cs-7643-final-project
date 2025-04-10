@@ -82,7 +82,7 @@ class TestPadImage(unittest.TestCase):
 
 
 class TestEmbedClinicalData(unittest.TestCase):
-    """Unit tests for the embed_clinical_data_into_image_alt function."""
+    """Unit tests for the embed_clinical_data_into_image function."""
 
     def setUp(self):
         """Create common test data."""
@@ -168,7 +168,7 @@ class TestEmbedClinicalData(unittest.TestCase):
         with self.assertRaises(ValueError):
             embed_clinical_data_into_image(self.single_image, tabular_data)
 
-    def test_image_modificatio_in_place(self):
+    def test_image_modification_in_place(self):
         """Test that the original image is modified in place."""
         tabular_data = torch.tensor([[0.5, 0.5, 0, 0]])
         original = self.single_image.clone()
