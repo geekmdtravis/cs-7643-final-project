@@ -53,9 +53,7 @@ class ChestXrayDataset(Dataset):
         """Return the number of items in the dataset."""
         return len(self.tabular_df)
 
-    def __getitem__(
-        self, idx: int
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Get an item from the dataset.
 
