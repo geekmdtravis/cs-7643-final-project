@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import torch
 from PIL import Image
 from torch.utils.data import DataLoader
 
@@ -107,19 +108,6 @@ class TestCreateDataloaders(unittest.TestCase):
         self.assertEqual(train_indices1, train_indices2)
         self.assertEqual(test_indices1, test_indices2)
 
-    def test_different_modes(self):
-        """Test different dataset modes."""
-        modes = ["image_only", "image_and_tabular", "embedded_image"]
-        for mode in modes:
-            train_loader, test_loader = create_dataloaders(self.file_paths, mode=mode)
-
-            # Check first batch
-            batch = next(iter(train_loader))
-            if mode == "image_and_tabular":
-                self.assertEqual(len(batch), 3)  # image, tabular, labels
-            else:
-                self.assertEqual(len(batch), 2)  # image, labels
-
     def test_num_workers(self):
         """Test different numbers of workers."""
         num_workers = 2
@@ -136,13 +124,6 @@ class TestCreateDataloaders(unittest.TestCase):
         for ratio in invalid_ratios:
             with self.assertRaises(ValueError):
                 create_dataloaders(self.file_paths, train_ratio=ratio)
-
-    def test_invalid_mode(self):
-        """Test invalid mode values."""
-        invalid_modes = ["invalid_mode", "another_invalid_mode"]
-        for mode in invalid_modes:
-            with self.assertRaises(ValueError):
-                create_dataloaders(self.file_paths, mode=mode)
 
     def test_invalid_batch_size(self):
         """Test invalid batch_size values."""
@@ -172,17 +153,72 @@ class TestCreateDataloaders(unittest.TestCase):
             with self.assertRaises(ValueError):
                 create_dataloaders(file_path)
 
-    def test_data_shapes(self):
-        """Test shapes of data from dataloaders."""
-        train_loader, test_loader = create_dataloaders(self.file_paths)
+    def test_data_shapes_and_values(self):
+        """Test shapes and values of data from dataloaders."""
+        # Test with different batch sizes
+        for batch_size in [1, 3, 5]:  # Test edge cases and max size for 0.5 split
+            train_loader, test_loader = create_dataloaders(
+                self.file_paths, batch_size=batch_size, train_ratio=0.5
+            )
 
-        # Get first batch
-        images, labels = next(iter(train_loader))
+            # Test both train and test loaders
+            for loader in [train_loader, test_loader]:
+                batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor] = next(
+                    iter(loader)
+                )
+                images, tabular, labels = batch
 
-        # Check shapes
-        self.assertEqual(len(images.shape), 4)  # B x C x H x W
-        self.assertEqual(images.shape[1], 3)  # 3 channels
-        self.assertEqual(labels.shape[1], 15)  # 15 possible conditions
+                # Image tensor tests
+                self.assertEqual(len(images.shape), 4)  # B x C x H x W
+                self.assertEqual(images.shape[0], batch_size)  # Batch size
+                self.assertEqual(images.shape[1], 3)  # RGB channels
+                self.assertEqual(images.shape[2], 32)  # Height
+                self.assertEqual(images.shape[3], 32)  # Width
+                self.assertTrue(images.is_contiguous())  # Memory layout
+
+                # Test image normalization (using ImageNet stats)
+                self.assertTrue(
+                    torch.all((images[:, 0] >= -2.5) & (images[:, 0] <= 2.5))
+                )  # Reasonable range after normalization
+
+                # Tabular features tests
+                self.assertEqual(len(tabular.shape), 2)  # B x F
+                self.assertEqual(tabular.shape[0], batch_size)  # Batch size
+                self.assertEqual(tabular.shape[1], 4)  # 4 features
+                self.assertTrue(tabular.is_contiguous())
+                self.assertEqual(tabular.dtype, torch.float32)
+
+                # Verify tabular value ranges
+                age_values = tabular[:, 0]
+                gender_values = tabular[:, 1]
+                view_position_values = tabular[:, 2]
+                followup_values = tabular[:, 3]
+
+                self.assertTrue(torch.all((age_values == 58)))
+                self.assertTrue(torch.all((gender_values == 0) | (gender_values == 1)))
+                self.assertTrue(
+                    torch.all((view_position_values == 0) | (view_position_values == 1))
+                )
+                self.assertTrue(
+                    torch.all(followup_values >= 0)
+                )  # Non-negative followup numbers
+
+                # Labels tests
+                self.assertEqual(len(labels.shape), 2)  # B x Classes
+                self.assertEqual(labels.shape[0], batch_size)
+                self.assertEqual(labels.shape[1], 15)  # 15 conditions
+                self.assertTrue(labels.is_contiguous())
+                self.assertEqual(labels.dtype, torch.float32)
+
+                # Verify labels are binary
+                self.assertTrue(torch.all((labels == 0) | (labels == 1)))
+
+                # Test pin_memory is set
+                self.assertTrue(loader.pin_memory)
+
+                # Verify batch alignment
+                self.assertEqual(images.shape[0], tabular.shape[0])
+                self.assertEqual(images.shape[0], labels.shape[0])
 
     def tearDown(self):
         """Clean up temporary files and directories."""

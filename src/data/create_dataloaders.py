@@ -1,6 +1,6 @@
 """Helper functions for creating dataloaders for the NIH Chest X-ray dataset."""
 
-from typing import Literal, Tuple
+from typing import Tuple
 
 import torch
 from torch.utils.data import DataLoader, random_split
@@ -12,7 +12,6 @@ from src.data.download import FilePaths
 
 def create_dataloaders(
     file_paths: FilePaths,
-    mode: Literal["image_only", "image_and_tabular", "embedded_image"] = "image_only",
     batch_size: int = 32,
     train_ratio: float = 0.8,
     seed: int = 42,
@@ -23,10 +22,6 @@ def create_dataloaders(
 
     Args:
         file_paths (FilePaths): Paths to the dataset files
-        mode (str): Dataset mode. One of:
-            - "image_only": Returns (image, labels)
-            - "image_and_tabular": Returns (image, tabular_features, labels)
-            - "embedded_image": Returns (embedded_image, labels)
         batch_size (int): Batch size for the dataloaders
         train_ratio (float): Ratio of data to use for training (0 < train_ratio < 1)
         seed (int): Random seed for reproducibility
@@ -38,10 +33,6 @@ def create_dataloaders(
 
     if train_ratio <= 0 or train_ratio >= 1:
         raise ValueError("train_ratio must be between 0 and 1.")
-    if mode not in ["image_only", "image_and_tabular", "embedded_image"]:
-        raise ValueError(
-            'mode must be one of ["image_only", "image_and_tabular", "embedded_image"].'
-        )
     if batch_size <= 0:
         raise ValueError("batch_size must be a positive integer.")
     if num_workers < 0:
@@ -60,7 +51,7 @@ def create_dataloaders(
     )
 
     # Create dataset
-    dataset = ChestXrayDataset(file_paths, mode=mode, transform=transform, seed=seed)
+    dataset = ChestXrayDataset(file_paths, transform=transform, seed=seed)
 
     # Calculate train/test sizes
     train_size = int(train_ratio * len(dataset))
