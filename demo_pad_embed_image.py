@@ -3,11 +3,13 @@ Demo padding and embedding of clinical data into images.
 """
 
 import os
+
 import torch
-from PIL import Image
 import torchvision.transforms.functional as TF
+from PIL import Image
+
 from src.data import download_dataset
-from src.utils import pad_image, embed_clinical_data_into_image, Config
+from src.utils import Config, embed_clinical_data_into_image_alt, pad_image
 
 cfg = Config()
 
@@ -23,12 +25,16 @@ test_image_3 = TF.to_tensor(_test_image_3)
 batched_images = torch.stack([test_image_1, test_image_2, test_image_3], dim=0)
 
 padded_image = pad_image(images=batched_images, padding=0)
-embedded_image = embed_clinical_data_into_image(
-    image=padded_image,
-    age=[25, 30, 99],
-    gender=["male", "female", "female"],
-    xr_pos=["AP", "PA", "PA"],
-    xr_count=[1, 3, 1],
+tabular_data = torch.tensor(
+    [
+        [0.1, 0.2, 0, 0],  # Sample 1
+        [0.3, 0.4, 1, 0],  # Sample 2
+        [0.5, 0.6, 0, 1],  # Sample 3
+    ]
+)
+embedded_image = embed_clinical_data_into_image_alt(
+    image_batch=batched_images,
+    tabular_batch=tabular_data,
     matrix_size=16,
 )
 
