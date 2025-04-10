@@ -35,6 +35,21 @@ def create_dataloaders(
     Returns:
         tuple: (train_loader, test_loader)
     """
+
+    if train_ratio <= 0 or train_ratio >= 1:
+        raise ValueError("train_ratio must be between 0 and 1.")
+    if mode not in ["image_only", "image_and_tabular", "embedded_image"]:
+        raise ValueError(
+            'mode must be one of ["image_only", "image_and_tabular", "embedded_image"].'
+        )
+    if batch_size <= 0:
+        raise ValueError("batch_size must be a positive integer.")
+    if num_workers < 0:
+        raise ValueError("num_workers must be a non-negative integer.")
+    if seed < 0:
+        raise ValueError("seed must be a non-negative integer.")
+    if not isinstance(file_paths, FilePaths):
+        raise ValueError("file_paths must be an instance of FilePaths.")
     # Standard transforms for medical images
     # - The normalization values are based on ImageNet statistics
     transform = transforms.Compose(
