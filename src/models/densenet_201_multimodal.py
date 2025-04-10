@@ -3,7 +3,7 @@ image features with tabular data"""
 
 import torch
 import torch.nn as nn
-from torchvision.models import densenet201, DenseNet201_Weights
+from torchvision.models import DenseNet201_Weights, densenet201
 
 
 class DenseNet201MultiModal(nn.Module):
@@ -27,7 +27,8 @@ class DenseNet201MultiModal(nn.Module):
             num_classes (int): Number of output classes. Defaults to 15
                 (14 pathologies + 1 no pathology)
             tabular_features (int): Number of tabular features to combine with image
-                features. Defaults to 4 due to four clinical features being present in the dataset
+                features. Defaults to 4 due to four clinical features being
+                present in the dataset
         """
         super(DenseNet201MultiModal, self).__init__()
         self.model = densenet201(weights=DenseNet201_Weights.IMAGENET1K_V1)

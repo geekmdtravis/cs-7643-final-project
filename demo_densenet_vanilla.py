@@ -1,10 +1,12 @@
 """Demo script for DenseNet201Vanilla model inference."""
 
 from io import BytesIO
+
+import requests
 import torch
 import torchvision.transforms as transforms
 from PIL import Image
-import requests
+
 from src.models import DenseNet201Vanilla
 
 
@@ -28,12 +30,14 @@ def load_imagenet_labels():
 
 def preprocess_image(image: Image.Image) -> torch.Tensor:
     """Preprocess image for DenseNet inference."""
+    mean_transform = [0.485, 0.456, 0.406]
+    std_transform = [0.229, 0.224, 0.225]
     transform = transforms.Compose(
         [
             transforms.Resize(256),
             transforms.CenterCrop(224),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            transforms.Normalize(mean=mean_transform, std=std_transform),
         ]
     )
     return transform(image).unsqueeze(0)
@@ -46,7 +50,8 @@ def run_inference():
     model.eval()
 
     # Sample image URL (fluffy white dog)
-    image_url = "https://raw.githubusercontent.com/pytorch/hub/master/images/dog.jpg"
+    image_url = ("https://raw.githubusercontent.com/pytorch/"
+                 "hub/master/images/dog.jpg")
 
     try:
         # Download and preprocess image

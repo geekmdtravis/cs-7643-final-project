@@ -4,6 +4,7 @@ clinical data into images.
 """
 
 from typing import List, Literal, Union
+
 import torch
 
 
@@ -49,8 +50,8 @@ def embed_clinical_data_into_image(
     Embed clinical data into the image tensor(s). The clinical data is embedded as
     a matrix in the upper-left corner of each image, occupying a total region of
     matrix_size x matrix_size pixels. This region is divided into four quadrants,
-    each of size (matrix_size // 2) x (matrix_size // 2). It will be added to all channels
-    of the image. The quadrants represent the clinical data as follows:
+    each of size (matrix_size // 2) x (matrix_size // 2). It will be added to
+    all channels of the image. The quadrants represent the clinical data as follows:
 
     - Top-left quadrant (0,0): Scaled age (0-120) to 0-1.
     - Top-right quadrant (0,1): 0 for male, 1 for female.
@@ -58,18 +59,21 @@ def embed_clinical_data_into_image(
     - Bottom-right quadrant (1,1): Scaled X-ray count (0-10) to 0-1.
 
     Args:
-        image (torch.Tensor): The input image tensor, either (C, H, W) for a single image
-            or (B, C, H, W) for a batch of images.
+        image (torch.Tensor): The input image tensor, either (C, H, W) for a
+            single image or (B, C, H, W) for a batch of images.
         age (Union[float, List[float]]): Age(s) of the patient(s) (0-120).
-        gender (Union[Literal, List[Literal]]): Gender(s) of the patient(s) ('male' or 'female').
-        xr_pos (Union[Literal, List[Literal]]): Position(s) of the X-ray(s) ('AP' or 'PA').
+        gender (Union[Literal, List[Literal]]): Gender(s) of the
+            patient(s) ('male' or 'female').
+        xr_pos (Union[Literal, List[Literal]]): Position(s) of the
+            X-ray(s) ('AP' or 'PA').
         xr_count (Union[int, List[int]]): Number(s) of X-rays taken (0-10).
-        matrix_size (int): The total size (height and width) of the embedded clinical data
-            matrix. Must be an even integer. Defaults to 16, matching the ViT patch size.
+        matrix_size (int): The total size (height and width) of the embedded
+            clinical data matrix. Must be an even integer. Defaults to 16,
+            matching the ViT patch size.
 
     Returns:
-        torch.Tensor: The image tensor with embedded clinical data in the top-left corner.
-            Will have the same number of dimensions as input.
+        torch.Tensor: The image tensor with embedded clinical data
+            in the top-left corner. Will have the same number of dimensions as input.
 
     Raises:
         ValueError: If the input image dimensions are invalid or too small.
@@ -87,11 +91,13 @@ def embed_clinical_data_into_image(
 
     if matrix_size <= 0:
         raise ValueError(
-            f"embed_clinical_data_into_image: matrix_size ({matrix_size}) must be a positive integer."
+            f"embed_clinical_data_into_image: matrix_size ({matrix_size}) must "
+            f"be a positive integer."
         )
     if matrix_size % 2 != 0:
         raise ValueError(
-            f"embed_clinical_data_into_image: matrix_size ({matrix_size}) must be an even integer."
+            f"embed_clinical_data_into_image: matrix_size ({matrix_size}) must "
+            f"be an even integer."
         )
 
     # Determine if we're working with a batch
@@ -145,30 +151,36 @@ def embed_clinical_data_into_image(
         )
     if len(xr_positions) != batch_size:
         raise ValueError(
-            f"Number of X-ray positions ({len(xr_positions)}) must match batch size ({batch_size})"
+            f"Number of X-ray positions ({len(xr_positions)}) must match "
+            f"batch size ({batch_size})"
         )
     if len(xr_counts) != batch_size:
         raise ValueError(
-            f"Number of X-ray counts ({len(xr_counts)}) must match batch size ({batch_size})"
+            f"Number of X-ray counts ({len(xr_counts)}) must match "
+            f"batch size ({batch_size})"
         )
 
     # Validate clinical data values
     for i, (a, g, pos, count) in enumerate(zip(ages, genders, xr_positions, xr_counts)):
         if not (0 <= a <= 120):
             raise ValueError(
-                f"embed_clinical_data_into_image: Age ({a}) at index {i} must be between 0 and 120."
+                f"embed_clinical_data_into_image: Age ({a}) at index {i} must "
+                f"be between 0 and 120."
             )
         if count <= 0:
             raise ValueError(
-                f"embed_clinical_data_into_image: X-ray count ({count}) at index {i} must be between 1 and 10."
+                f"embed_clinical_data_into_image: X-ray count ({count}) at index {i} "
+                f"must be between 1 and 10."
             )
         if g not in ["male", "female"]:
             raise ValueError(
-                f"embed_clinical_data_into_image: Gender {g} at index {i}, must be either 'male' or 'female'."
+                f"embed_clinical_data_into_image: Gender {g} at index {i}, "
+                f"must be either 'male' or 'female'."
             )
         if pos not in ["AP", "PA"]:
             raise ValueError(
-                f"embed_clinical_data_into_image: X-ray position {pos} at index {i}, must be either 'AP' or 'PA'."
+                f"embed_clinical_data_into_image: X-ray position {pos} at "
+                f"index {i}, must be either 'AP' or 'PA'."
             )
 
     # --- Data Scaling ---
@@ -191,7 +203,6 @@ def embed_clinical_data_into_image(
         xr_count_scaled = xr_count_scaled.unsqueeze(0)
 
     # Reshape clinical data for broadcasting to match batch, height, width dimensions
-    quad_area = quad_size * quad_size
     age_scaled = age_scaled.view(-1, 1, 1).expand(-1, quad_size, quad_size)
     gender_val = gender_val.view(-1, 1, 1).expand(-1, quad_size, quad_size)
     xr_pos_val = xr_pos_val.view(-1, 1, 1).expand(-1, quad_size, quad_size)

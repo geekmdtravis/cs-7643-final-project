@@ -3,9 +3,10 @@ Download the NIH Chest X-ray dataset using kagglehub.
 This script downloads the dataset and provides a dataclass to hold the file paths.
 """
 
-from pathlib import Path
-from dataclasses import dataclass
 import sys
+from dataclasses import dataclass
+from pathlib import Path
+
 import kagglehub
 
 
@@ -31,10 +32,20 @@ class FilePaths:
             raise FileNotFoundError(f"Test list not found: {self.test_list}")
 
     def __repr__(self):
-        return f"FilePaths(clinical_data={self.clinical_data}, images_dir={self.images_dir}, train_val_list={self.train_val_list}, test_list={self.test_list})"
+        return (
+            f"FilePaths(clinical_data={self.clinical_data}, "
+            f"images_dir={self.images_dir}, "
+            f"train_val_list={self.train_val_list}, "
+            f"test_list={self.test_list})"
+        )
 
     def __str__(self):
-        return f"FilePaths(\n\tclinical_data={self.clinical_data}, \n\timages_dir={self.images_dir}, \n\ttrain_val_list={self.train_val_list}, \n\ttest_list={self.test_list})"
+        return (
+            f"FilePaths(\n\tclinical_data={self.clinical_data}, \n\t"
+            f"images_dir={self.images_dir}, \n\t"
+            f"train_val_list={self.train_val_list}, \n\t"
+            f"test_list={self.test_list})"
+        )
 
 
 def download_dataset() -> FilePaths:
