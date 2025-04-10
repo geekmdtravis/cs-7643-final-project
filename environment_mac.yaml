@@ -1,0 +1,32 @@
+name: cs7643-project
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - pip>=22.0
+  - pytorch>=2.0.0
+  - torchvision>=0.15.0
+  - numpy>=1.22.0
+  - pandas>=1.5.0
+  - pillow>=9.0.0
+  - matplotlib>=3.5.0
+  - seaborn>=0.12.0
+  - scikit-learn>=1.0.0
+  - tqdm>=4.65.0
+  - wandb>=0.15.0 # For experiment tracking
+  - timm>=1.0.0 # For Vision Transformer models
+  - pip:
+      - kagglehub>=0.1.0 # For downloading dataset
+      - pytorch-lightning>=2.0.0 # Optional: for structured training loops
+      - albumentations>=1.3.0 # For advanced image augmentations
+      - grad-cam>=1.4.0 # For visualization (TODO)
+      - python-dotenv # For environmental settings/config
+      - ipykernel
+      - requests
+      - pillow
+      - psutil
+      - black
+      - flake8
