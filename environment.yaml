@@ -29,3 +29,5 @@ dependencies:
       - requests
       - pillow
       - psutil
+      - black
+      - flake8
