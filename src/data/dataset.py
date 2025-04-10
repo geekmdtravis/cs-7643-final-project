@@ -1,12 +1,13 @@
 """Custom dataset implementation for the NIH Chest X-ray dataset."""
 
 import os
-from typing import Literal, Tuple
+from typing import Literal, Optional, Tuple
 
 import pandas as pd
 import torch
 from PIL import Image
 from torch.utils.data import Dataset
+from torchvision import transforms
 
 from src.data.download import FilePaths
 from src.utils.image_manipulation import embed_clinical_data_into_image
@@ -27,7 +28,7 @@ class ChestXrayDataset(Dataset):
         mode: Literal[
             "image_only", "image_and_tabular", "embedded_image"
         ] = "image_only",
-        transform=None,
+        transform: Optional[transforms.Compose] = None,
         seed: int = 42,
     ):
         """
@@ -49,16 +50,19 @@ class ChestXrayDataset(Dataset):
             )
 
         self.mode = mode
-        self.transform = transform
+        # Set default transform to ToTensor if none provided
+        self.transform = transform if transform is not None else transforms.ToTensor()
         self.images_dir = file_paths.images_dir
+
+        # Set seed first for reproducibility
+        set_seed(seed)  # Ensure reproducibility for any random operations
 
         # Load and preprocess tabular data
         clinical_df = pd.read_csv(file_paths.clinical_data)
         self.tabular_df = create_working_tabular_df(clinical_df)
 
         # Shuffle the dataset with the given seed
-        self.tabular_df = randomize_df(self.tabular_df)
-        set_seed(seed)  # Ensure reproducibility for any random operations
+        self.tabular_df = randomize_df(self.tabular_df, seed=seed)
 
     def __len__(self) -> int:
         """Return the number of items in the dataset."""
@@ -85,10 +89,9 @@ class ChestXrayDataset(Dataset):
         # Get image path and load image
         img_name = self.tabular_df.iloc[idx]["imageIndex"]
         img_path = os.path.join(self.images_dir, img_name)
-        image = Image.open(img_path).convert("RGB")
-
-        if self.transform:
-            image = self.transform(image)
+        _image = Image.open(img_path).convert("RGB")
+        # Always apply transform since we now have a default ToTensor
+        image = self.transform(_image)
 
         # Get labels (filter columns that start with 'label_')
         labels = self.tabular_df.iloc[idx].filter(like="label_").values.astype(float)

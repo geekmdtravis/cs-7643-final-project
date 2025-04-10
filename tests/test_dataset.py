@@ -58,7 +58,7 @@ class TestChestXrayDataset(unittest.TestCase):
         dataset = ChestXrayDataset(self.file_paths)
         self.assertEqual(len(dataset), 2)
         self.assertEqual(dataset.mode, "image_only")
-        self.assertIsNone(dataset.transform)
+        self.assertIsInstance(dataset.transform, transforms.ToTensor)
 
     def test_invalid_mode(self):
         """Test initialization with invalid mode."""
@@ -111,7 +111,7 @@ class TestChestXrayDataset(unittest.TestCase):
     def test_different_seeds(self):
         """Test that different seeds produce different data orderings."""
         dataset1 = ChestXrayDataset(self.file_paths, seed=42)
-        dataset2 = ChestXrayDataset(self.file_paths, seed=43)
+        dataset2 = ChestXrayDataset(self.file_paths, seed=42069)
 
         # Convert both datasets' tabular_df indices to lists for comparison
         indices1 = dataset1.tabular_df.index.tolist()

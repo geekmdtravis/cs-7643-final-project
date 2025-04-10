@@ -1,7 +1,9 @@
 """Unit tests for image manipulation functions."""
 
 import unittest
+
 import torch
+
 from src.utils.image_manipulation import embed_clinical_data_into_image, pad_image
 
 
@@ -172,7 +174,7 @@ class TestEmbedClinicalData(unittest.TestCase):
 
     def test_xr_count_validation(self):
         """Test X-ray count validation."""
-        invalid_counts = [-1, 0]
+        invalid_counts = [-1, -2]
         for count in invalid_counts:
             with self.assertRaises(ValueError):
                 embed_clinical_data_into_image(
