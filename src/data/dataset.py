@@ -1,7 +1,7 @@
 """Custom dataset implementation for the NIH Chest X-ray dataset."""
 
 import os
-from typing import Literal, Optional, Tuple
+from typing import Optional, Tuple
 
 import pandas as pd
 import torch
@@ -10,24 +10,18 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 
 from src.data.download import FilePaths
-from src.utils.image_manipulation import embed_clinical_data_into_image
 from src.utils.preprocessing import create_working_tabular_df, randomize_df, set_seed
 
 
 class ChestXrayDataset(Dataset):
     """
-    Custom dataset for the NIH Chest X-ray dataset that supports three modes:
-    1. image_only: Returns (image, labels)
-    2. image_and_tabular: Returns (image, tabular_features, labels)
-    3. embedded_image: Returns (embedded_image, labels)
+    Custom dataset for the NIH Chest X-ray dataset.
+    Returns a tuple of (image, tabular_features, labels) for each item.
     """
 
     def __init__(
         self,
         file_paths: FilePaths,
-        mode: Literal[
-            "image_only", "image_and_tabular", "embedded_image"
-        ] = "image_only",
         transform: Optional[transforms.Compose] = None,
         seed: int = 42,
     ):
@@ -36,20 +30,10 @@ class ChestXrayDataset(Dataset):
 
         Args:
             file_paths (FilePaths): Paths to the dataset files
-            mode (str): Dataset mode. One of:
-                - "image_only": Returns (image, labels)
-                - "image_and_tabular": Returns (image, tabular_features, labels)
-                - "embedded_image": Returns (embedded_image, labels)
             transform: Optional transform to be applied to the images
             seed (int): Random seed for reproducibility
         """
-        if mode not in ["image_only", "image_and_tabular", "embedded_image"]:
-            raise ValueError(
-                f"Invalid mode: {mode}. Must be one of: "
-                "'image_only', 'image_and_tabular', 'embedded_image'"
-            )
 
-        self.mode = mode
         # Set default transform to ToTensor if none provided
         self.transform = transform if transform is not None else transforms.ToTensor()
         self.images_dir = file_paths.images_dir
@@ -71,10 +55,7 @@ class ChestXrayDataset(Dataset):
 
     def __getitem__(
         self, idx: int
-    ) -> (
-        Tuple[torch.Tensor, torch.Tensor]
-        | Tuple[torch.Tensor, torch.Tensor, torch.Tensor]
-    ):
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Get an item from the dataset.
 
@@ -82,10 +63,10 @@ class ChestXrayDataset(Dataset):
             idx (int): Index of the item to get
 
         Returns:
-            tuple: Depending on the mode:
-                - image_only: (image, labels)
-                - image_and_tabular: (image, tabular_features, labels)
-                - embedded_image: (embedded_image, labels)
+            tuple: A tuple containing:
+                - image: The chest X-ray image as a tensor
+                - tabular_features: Patient metadata as a tensor
+                - labels: Disease labels as a tensor
         """
         # Get image path and load image
         img_name = self.tabular_df.iloc[idx]["imageIndex"]
@@ -98,10 +79,6 @@ class ChestXrayDataset(Dataset):
         labels = self.tabular_df.iloc[idx].filter(like="label_").values.astype(float)
         labels = torch.FloatTensor(labels)
 
-        if self.mode == "image_only":
-            return image, labels
-
-        # Get tabular features
         tabular_features = torch.FloatTensor(
             [
                 self.tabular_df.iloc[idx]["patientAge"],
@@ -111,17 +88,4 @@ class ChestXrayDataset(Dataset):
             ]
         )
 
-        if self.mode == "image_and_tabular":
-            return image, tabular_features, labels
-
-        # Embedded mode
-        embedded_image = embed_clinical_data_into_image(
-            image,
-            age=self.tabular_df.iloc[idx]["patientAge"],
-            gender=(
-                "female" if self.tabular_df.iloc[idx]["patientGender"] == 1 else "male"
-            ),
-            xr_pos="PA" if self.tabular_df.iloc[idx]["viewPosition"] == 0 else "AP",
-            xr_count=self.tabular_df.iloc[idx]["followUpNumber"],
-        )
-        return embedded_image, labels
+        return image, tabular_features, labels

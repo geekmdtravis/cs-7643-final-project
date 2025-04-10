@@ -3,11 +3,7 @@ This module provides utility functions for image processing and data handling.
 """
 
 from .config import Config
-from .image_manipulation import (
-    embed_clinical_data_into_image,
-    embed_clinical_data_into_image_alt,
-    pad_image,
-)
+from .image_manipulation import embed_clinical_data_into_image, pad_image
 from .preprocessing import (
     convert_agestr_to_years,
     create_working_tabular_df,

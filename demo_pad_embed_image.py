@@ -9,7 +9,7 @@ import torchvision.transforms.functional as TF
 from PIL import Image
 
 from src.data import download_dataset
-from src.utils import Config, embed_clinical_data_into_image_alt, pad_image
+from src.utils import Config, embed_clinical_data_into_image, pad_image
 
 cfg = Config()
 
@@ -32,7 +32,7 @@ tabular_data = torch.tensor(
         [0.5, 0.6, 0, 1],  # Sample 3
     ]
 )
-embedded_image = embed_clinical_data_into_image_alt(
+embedded_image = embed_clinical_data_into_image(
     image_batch=batched_images,
     tabular_batch=tabular_data,
     matrix_size=16,
