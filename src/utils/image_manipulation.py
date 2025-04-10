@@ -54,7 +54,9 @@ def embed_clinical_data_into_image(
     - Bottom-right quadrant (1,1): View position (0 for AP, 1 for PA)
 
     Args:
-        image_batch (torch.Tensor): The input image tensor (B, C, H, W)
+        image_batch (torch.Tensor): The input image tensor (B, C, H, W). Miniumum
+            dimensions are (B, C, 32, 32) to allow for embedding and to comply with
+            the underlying models.
         tabular_batch (torch.Tensor): The input tabular data tensor (B, 4) where:
             - [:, 0]: Normalized follow-up number values in [0,1]
             - [:, 1]: Normalized patient age values in [0,1]
@@ -81,7 +83,7 @@ def embed_clinical_data_into_image(
         )
     img_width = image_batch.shape[-1]
     img_height = image_batch.shape[-2]
-    if img_width < matrix_size or img_height < matrix_size:
+    if img_width // 2 < matrix_size or img_height // 2 < matrix_size:
         raise ValueError(
             f"embed_clinical_data_into_image: Image "
             f"dimensions ({img_height}x{img_width}) "
@@ -96,15 +98,16 @@ def embed_clinical_data_into_image(
             f"must be at least 32x32 to embed data with matrix_size={matrix_size}."
         )
 
-    if matrix_size % 2 != 0:
-        raise ValueError(
-            f"embed_clinical_data_into_image: matrix_size ({matrix_size}) must be "
-            f"an even integer."
-        )
     if matrix_size <= 0:
         raise ValueError(
             f"embed_clinical_data_into_image: matrix_size ({matrix_size}) must "
             f"be a positive integer."
+        )
+
+    if matrix_size % 2 != 0:
+        raise ValueError(
+            f"embed_clinical_data_into_image: matrix_size ({matrix_size}) must "
+            f"be an even integer."
         )
 
     if matrix_size > img_width // 2 or matrix_size > img_height // 2:
