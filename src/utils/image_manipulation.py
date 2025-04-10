@@ -170,7 +170,7 @@ def embed_clinical_data_into_image(
         if count < 0:
             raise ValueError(
                 f"embed_clinical_data_into_image: X-ray follow-up ({count}) "
-                f"at index {i} must be a positive number"
+                f"at index {i} must be greater than or equal to 0."
             )
         if g not in ["male", "female"]:
             raise ValueError(
