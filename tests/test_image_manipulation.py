@@ -4,7 +4,11 @@ import unittest
 
 import torch
 
-from src.utils.image_manipulation import embed_clinical_data_into_image, pad_image
+from src.utils.image_manipulation import (
+    embed_clinical_data_into_image,
+    embed_clinical_data_into_image_alt,
+    pad_image,
+)
 
 
 class TestPadImage(unittest.TestCase):
@@ -79,6 +83,133 @@ class TestPadImage(unittest.TestCase):
         self.assertTrue(torch.allclose(result[:, :16, -16:], torch.tensor(0.0)))
         self.assertTrue(torch.allclose(result[:, -16:, :16], torch.tensor(0.0)))
         self.assertTrue(torch.allclose(result[:, -16:, -16:], torch.tensor(0.0)))
+
+
+class TestEmbedClinicalDataAlt(unittest.TestCase):
+    """Unit tests for the embed_clinical_data_into_image_alt function."""
+
+    def setUp(self):
+        """Create common test data."""
+        self.single_image = torch.zeros(1, 3, 32, 32)
+        self.batch_image = torch.zeros(4, 3, 32, 32)
+
+    def test_basic_functionality(self):
+        """Test basic embedding with valid inputs."""
+        tabular_data = torch.tensor([[0.5, 0.5, 0, 0]])  # Single sample
+        result = embed_clinical_data_into_image_alt(self.single_image, tabular_data)
+
+        # Check shape preservation
+        self.assertEqual(result.shape, self.single_image.shape)
+
+        # Check embedded values in each quadrant
+        quad_size = 8  # matrix_size=16 // 2
+        self.assertTrue(
+            torch.allclose(
+                result[0, 0, :quad_size, :quad_size], torch.tensor(0.5)
+            )  # Follow-up
+        )
+        self.assertTrue(
+            torch.allclose(
+                result[0, 0, :quad_size, quad_size:16], torch.tensor(0.5)
+            )  # Age
+        )
+        self.assertTrue(
+            torch.allclose(
+                result[0, 0, quad_size:16, :quad_size], torch.tensor(0.0)
+            )  # Gender
+        )
+        self.assertTrue(
+            torch.allclose(
+                result[0, 0, quad_size:16, quad_size:16], torch.tensor(0.0)
+            )  # Position
+        )
+
+    def test_batch_functionality(self):
+        """Test batch embedding with valid inputs."""
+        tabular_data = torch.tensor(
+            [
+                [0.1, 0.2, 0, 0],  # Sample 1
+                [0.3, 0.4, 1, 0],  # Sample 2
+                [0.5, 0.6, 0, 1],  # Sample 3
+                [0.7, 0.8, 1, 1],  # Sample 4
+            ]
+        )
+        result = embed_clinical_data_into_image_alt(self.batch_image, tabular_data)
+
+        # Check shape preservation
+        self.assertEqual(result.shape, self.batch_image.shape)
+
+        # Check values for first image in batch
+        quad_size = 8
+        self.assertTrue(
+            torch.allclose(result[0, 0, :quad_size, :quad_size], torch.tensor(0.1))
+        )
+        self.assertTrue(
+            torch.allclose(result[0, 0, :quad_size, quad_size:16], torch.tensor(0.2))
+        )
+        self.assertTrue(
+            torch.allclose(result[0, 0, quad_size:16, :quad_size], torch.tensor(0.0))
+        )
+        self.assertTrue(
+            torch.allclose(result[0, 0, quad_size:16, quad_size:16], torch.tensor(0.0))
+        )
+
+    def test_batch_size_mismatch(self):
+        """Test validation of batch sizes between image and tabular data."""
+        tabular_data = torch.tensor([[0.5, 0.5, 0, 0], [0.3, 0.3, 1, 1]])  # 2 samples
+        with self.assertRaises(ValueError):
+            embed_clinical_data_into_image_alt(
+                self.batch_image, tabular_data
+            )  # 4 images
+
+    def test_invalid_gender_values(self):
+        """Test validation of gender values (must be 0 or 1)."""
+        tabular_data = torch.tensor([[0.5, 0.5, 0.5, 0]])  # Invalid gender
+        with self.assertRaises(ValueError):
+            embed_clinical_data_into_image_alt(self.single_image, tabular_data)
+
+    def test_invalid_position_values(self):
+        """Test validation of position values (must be 0 or 1)."""
+        tabular_data = torch.tensor([[0.5, 0.5, 0, 0.5]])  # Invalid position
+        with self.assertRaises(ValueError):
+            embed_clinical_data_into_image_alt(self.single_image, tabular_data)
+
+    def test_image_modificatio_in_place(self):
+        """Test that the original image is modified in place."""
+        tabular_data = torch.tensor([[0.5, 0.5, 0, 0]])
+        original = self.single_image.clone()
+        _ = embed_clinical_data_into_image_alt(self.single_image, tabular_data)
+        self.assertFalse(torch.equal(self.single_image, original))
+
+    def test_matrix_size_validation(self):
+        """Test matrix size validation."""
+        tabular_data = torch.tensor([[0.5, 0.5, 0, 0]])
+
+        # Test invalid sizes
+        invalid_sizes = [-1, 0, 15]  # negative, zero, odd
+        for size in invalid_sizes:
+            with self.assertRaises(ValueError):
+                embed_clinical_data_into_image_alt(
+                    self.single_image, tabular_data, matrix_size=size
+                )
+
+    def test_image_size_validation(self):
+        """Test image size validation against matrix size."""
+        small_image = torch.zeros(1, 3, 8, 8)
+        tabular_data = torch.tensor([[0.5, 0.5, 0, 0]])
+        with self.assertRaises(ValueError):
+            embed_clinical_data_into_image_alt(
+                small_image, tabular_data, matrix_size=16
+            )
+
+    def test_all_channels_same(self):
+        """Test that clinical data is embedded identically in all channels."""
+        tabular_data = torch.tensor([[0.5, 0.5, 0, 0]])
+        result = embed_clinical_data_into_image_alt(self.single_image, tabular_data)
+
+        # Compare all channels to first channel
+        for c in range(1, result.shape[1]):
+            self.assertTrue(torch.equal(result[:, 0, :16, :16], result[:, c, :16, :16]))
 
 
 class TestEmbedClinicalData(unittest.TestCase):
