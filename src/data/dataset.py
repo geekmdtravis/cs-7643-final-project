@@ -59,10 +59,11 @@ class ChestXrayDataset(Dataset):
 
         # Load and preprocess tabular data
         clinical_df = pd.read_csv(file_paths.clinical_data)
-        self.tabular_df = create_working_tabular_df(clinical_df)
+        _clinical_df = create_working_tabular_df(clinical_df)
 
         # Shuffle the dataset with the given seed
-        self.tabular_df = randomize_df(self.tabular_df, seed=seed)
+        _randomized_df = randomize_df(_clinical_df, seed=seed)
+        self.tabular_df = _randomized_df
 
     def __len__(self) -> int:
         """Return the number of items in the dataset."""

@@ -24,8 +24,8 @@ class TestChestXrayDataset(unittest.TestCase):
         self.images_dir = self.temp_dir / "images"
         self.images_dir.mkdir()
 
-        # Create a few test images
-        self.image_names = ["00000001_000.png", "00000002_000.png"]
+        # Create test images (10 images for better randomization testing)
+        self.image_names = [f"{str(i).zfill(8)}_000.png" for i in range(1, 11)]
         for img_name in self.image_names:
             # Create a simple test image (3 channels, 32x32)
             img = Image.fromarray(np.zeros((32, 32, 3), dtype=np.uint8))
@@ -35,11 +35,44 @@ class TestChestXrayDataset(unittest.TestCase):
         self.clinical_data = pd.DataFrame(
             {
                 "Image Index": self.image_names,
-                "Finding Labels": ["Cardiomegaly", "No Finding"],
-                "Follow-up #": [0, 1],
-                "Patient Age": ["058Y", "012M"],
-                "Patient Gender": ["M", "F"],
-                "View Position": ["PA", "AP"],
+                "Finding Labels": [
+                    "Cardiomegaly",
+                    "No Finding",
+                    "Edema",
+                    "Mass",
+                    "Nodule",
+                    "Pneumonia",
+                    "Atelectasis",
+                    "Effusion",
+                    "Infiltration",
+                    "Pneumothorax",
+                ],
+                "Follow-up #": list(range(10)),
+                "Patient Age": [
+                    "058Y",
+                    "012M",
+                    "045Y",
+                    "067Y",
+                    "023Y",
+                    "034Y",
+                    "078Y",
+                    "019Y",
+                    "056Y",
+                    "042Y",
+                ],
+                "Patient Gender": ["M", "F", "M", "F", "M", "F", "M", "F", "M", "F"],
+                "View Position": [
+                    "PA",
+                    "AP",
+                    "PA",
+                    "AP",
+                    "PA",
+                    "AP",
+                    "PA",
+                    "AP",
+                    "PA",
+                    "AP",
+                ],
             }
         )
 
@@ -56,7 +89,7 @@ class TestChestXrayDataset(unittest.TestCase):
     def test_initialization(self):
         """Test dataset initialization."""
         dataset = ChestXrayDataset(self.file_paths)
-        self.assertEqual(len(dataset), 2)
+        self.assertEqual(len(dataset), 10)
         self.assertEqual(dataset.mode, "image_only")
         self.assertIsInstance(dataset.transform, transforms.ToTensor)
 
@@ -113,21 +146,25 @@ class TestChestXrayDataset(unittest.TestCase):
         dataset1 = ChestXrayDataset(self.file_paths, seed=42)
         dataset2 = ChestXrayDataset(self.file_paths, seed=42069)
 
-        # Convert both datasets' tabular_df indices to lists for comparison
-        indices1 = dataset1.tabular_df.index.tolist()
-        indices2 = dataset2.tabular_df.index.tolist()
+        # Compare the actual data ordering using image names
+        order1 = dataset1.tabular_df["imageIndex"].tolist()
+        order2 = dataset2.tabular_df["imageIndex"].tolist()
 
-        self.assertNotEqual(indices1, indices2)
+        # With 10 items, the probability of getting same order is 1 in 3,628,800 (10!)
+        self.assertNotEqual(
+            order1, order2, "Different seeds should produce different image orderings"
+        )
 
     def test_same_seed_reproducibility(self):
         """Test that same seed produces same data ordering."""
         dataset1 = ChestXrayDataset(self.file_paths, seed=42)
         dataset2 = ChestXrayDataset(self.file_paths, seed=42)
 
-        indices1 = dataset1.tabular_df.index.tolist()
-        indices2 = dataset2.tabular_df.index.tolist()
+        # Compare the actual data ordering using image names
+        order1 = dataset1.tabular_df["imageIndex"].tolist()
+        order2 = dataset2.tabular_df["imageIndex"].tolist()
 
-        self.assertEqual(indices1, indices2)
+        self.assertEqual(order1, order2)
 
     def tearDown(self):
         """Clean up temporary files and directories."""
