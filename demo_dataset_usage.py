@@ -3,15 +3,20 @@
 import torch
 
 from src.data import create_dataloaders, download_dataset
+from src.utils import config
 
 
 def main():
     """Demonstrate dataset usage."""
-    file_paths = download_dataset()
+    clinical_data, cxr_images_dir = download_dataset()
 
     print("Creating dataloaders...")
 
-    train_loader, test_loader = create_dataloaders(file_paths, batch_size=32)
+    train_loader, test_loader = create_dataloaders(
+        clinical_data=clinical_data,
+        cxr_images_dir=cxr_images_dir,
+        batch_size=config.BATCH_SIZE,
+    )
     res = next(iter(train_loader))
     images: torch.Tensor = res[0]
     tabular: torch.Tensor = res[1]

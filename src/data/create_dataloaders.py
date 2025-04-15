@@ -1,5 +1,6 @@
 """Helper functions for creating dataloaders for the NIH Chest X-ray dataset."""
 
+from pathlib import Path
 from typing import Tuple
 
 import torch
@@ -7,11 +8,11 @@ from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
 
 from src.data.dataset import ChestXrayDataset
-from src.data.download import FilePaths
 
 
 def create_dataloaders(
-    file_paths: FilePaths,
+    clinical_data: Path,
+    cxr_images_dir: Path,
     batch_size: int = 32,
     train_ratio: float = 0.8,
     seed: int = 42,
@@ -39,8 +40,7 @@ def create_dataloaders(
         raise ValueError("num_workers must be a non-negative integer.")
     if seed < 0:
         raise ValueError("seed must be a non-negative integer.")
-    if not isinstance(file_paths, FilePaths):
-        raise ValueError("file_paths must be an instance of FilePaths.")
+
     # Standard transforms for medical images
     # - The normalization values are based on ImageNet statistics
     transform = transforms.Compose(
@@ -51,7 +51,12 @@ def create_dataloaders(
     )
 
     # Create dataset
-    dataset = ChestXrayDataset(file_paths, transform=transform, seed=seed)
+    dataset = ChestXrayDataset(
+        clinical_data=clinical_data,
+        cxr_images_dir=cxr_images_dir,
+        transform=transform,
+        seed=seed,
+    )
 
     # Calculate train/test sizes
     train_size = int(train_ratio * len(dataset))

@@ -1,6 +1,7 @@
 """Custom dataset implementation for the NIH Chest X-ray dataset."""
 
 import os
+from pathlib import Path
 from typing import Optional, Tuple
 
 import pandas as pd
@@ -9,7 +10,6 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-from src.data.download import FilePaths
 from src.utils.preprocessing import create_working_tabular_df, randomize_df, set_seed
 
 
@@ -21,7 +21,8 @@ class ChestXrayDataset(Dataset):
 
     def __init__(
         self,
-        file_paths: FilePaths,
+        clinical_data: Path,
+        cxr_images_dir: Path,
         transform: Optional[transforms.Compose] = None,
         seed: int = 42,
     ):
@@ -36,13 +37,13 @@ class ChestXrayDataset(Dataset):
 
         # Set default transform to ToTensor if none provided
         self.transform = transform if transform is not None else transforms.ToTensor()
-        self.images_dir = file_paths.images_dir
+        self.images_dir = cxr_images_dir
 
         # Set seed first for reproducibility
         set_seed(seed)  # Ensure reproducibility for any random operations
 
         # Load and preprocess tabular data
-        clinical_df = pd.read_csv(file_paths.clinical_data)
+        clinical_df = pd.read_csv(clinical_data)
         _clinical_df = create_working_tabular_df(clinical_df)
 
         # Shuffle the dataset with the given seed
