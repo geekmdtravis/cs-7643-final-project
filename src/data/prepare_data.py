@@ -12,10 +12,18 @@ images to {workspace}/artifacts/embedded_images.
 from pathlib import Path
 
 import pandas as pd
+import torch
+import torchvision.transforms.functional as TF
+from PIL import Image
 from tqdm import tqdm
 
 from src.data import download_dataset
-from src.utils import create_working_tabular_df, set_seed, train_test_split
+from src.utils import (
+    create_working_tabular_df,
+    embed_clinical_data_into_image,
+    set_seed,
+    train_test_split,
+)
 from src.utils.path_utils import get_project_root
 
 
@@ -123,10 +131,14 @@ def __copy_images_to_artifacts(
         raise NotADirectoryError(f"{dest_dir} is not a directory.")
 
     clinical_df = pd.read_csv(clinical_data)
-    image_list = list(kaggle_cache_cxr_dir.glob("*.png"))
+    # Get set of valid image indices for faster lookup
+    valid_images = set(clinical_df["imageIndex"].values)
+    # Filter image list before processing
+    image_list = [
+        img for img in kaggle_cache_cxr_dir.glob("*.png") if img.name in valid_images
+    ]
+
     for image in tqdm(image_list, desc="Copying images"):
-        if image.name not in clinical_df["imageIndex"].values:
-            continue
         if image.is_file():
             dest_image = dest_dir / image.name
             dest_image.write_bytes(image.read_bytes())
@@ -135,34 +147,45 @@ def __copy_images_to_artifacts(
     print(f"Copied images from {kaggle_cache_cxr_dir} to {dest_dir}.")
 
 
-def copy_csv_to_artifacts(
-    origin_file: Path,
-    dest_file: Path | None = None,
+def __copy_embedded_images_to_arfifacts(
+    images_dir: Path, clinical_data: Path, dest_dir: Path
 ) -> None:
     """
-    The origin file is the csv within the Kaggle
-    cached dataset. The destination file will default to
-    {workspace}/artifacts/tabular_data.csv.
+    Copy the embedded images to the artifacts directory.
     """
-    if dest_file is None:
-        project_root = get_project_root()
-        artifacts_dir = project_root / "artifacts"
-        if not artifacts_dir.exists():
-            raise FileNotFoundError(f"{artifacts_dir} does not exist.")
-        dest_dir = artifacts_dir
-        dest_file = dest_dir / "clinical_data.csv"
-
-    if not origin_file.exists():
-        raise FileNotFoundError(f"{origin_file} does not exist.")
-    if not origin_file.is_file():
-        raise FileNotFoundError(f"{origin_file} is not a file or was not found.")
     if not dest_dir.exists():
-        dest_dir.mkdir()
+        dest_dir.mkdir(parents=True)
     if not dest_dir.is_dir():
         raise NotADirectoryError(f"{dest_dir} is not a directory.")
 
-    dest_file.write_bytes(origin_file.read_bytes())
-    print(f"Copied csv from {origin_file} to {dest_file}.")
+    clinical_df = pd.read_csv(clinical_data)
+
+    images_list = list(images_dir.glob("*.png"))
+
+    for image in tqdm(images_list, desc="Copying embedded images"):
+        if image.is_file():
+            image_name = image.name
+            pil_image = Image.open(image)
+            image_tensor = TF.to_tensor(pil_image)
+            tabular_batch = torch.tensor(
+                clinical_df[clinical_df["imageIndex"] == image_name]
+                .iloc[0]
+                .values[1:5]
+                .astype(float)
+            ).float()
+
+            embedded_img = embed_clinical_data_into_image(
+                image_batch=torch.stack([image_tensor]),
+                tabular_batch=torch.stack([tabular_batch]),
+                matrix_size=16,
+            )
+            save_path = dest_dir / image_name
+            embedded_image = embedded_img.cpu().detach()[0]
+            embedded_pil_image = TF.to_pil_image(embedded_image)
+            embedded_pil_image.save(save_path)
+
+        else:
+            raise FileNotFoundError(f"{image} is not a file.")
 
 
 def process_data(test_size: float = 0.2, seed: int = 42) -> None:
@@ -170,13 +193,14 @@ def process_data(test_size: float = 0.2, seed: int = 42) -> None:
     Process the data for the Chest X-ray dataset. The
     output directory of the clinical data is
     `{workspace}/artifacts/{train|test}.csv` and the
-    images are saved to `{workspace}/artifacts/cxr_images` and
-    `{workspace}/artifacts/embedded_images`.
+    images are saved to `{workspace}/artifacts/cxr_{train|test}` and
+    `{workspace}/artifacts/embedded_{train|test}`.
     """
 
     clinical_data, cxr_images_dir = download_dataset()
 
     root = get_project_root()
+    print("Saving processed clinical data to artifacts directory...")
     __split_save_data(
         clinical_data=clinical_data,
         output_dir=root / "artifacts",
@@ -187,13 +211,28 @@ def process_data(test_size: float = 0.2, seed: int = 42) -> None:
     test_data = root / "artifacts" / "test.csv"
     train_data = root / "artifacts" / "train.csv"
 
+    print("Copying unmodified train images to artifacts directory...")
     __copy_images_to_artifacts(
         clinical_data=train_data,
         kaggle_cache_cxr_dir=cxr_images_dir,
-        dest_dir=root / "artifacts" / "cxr_images_train",
+        dest_dir=root / "artifacts" / "cxr_train",
     )
+    print("Copying unmodified test images to artifacts directory...")
     __copy_images_to_artifacts(
         clinical_data=test_data,
         kaggle_cache_cxr_dir=cxr_images_dir,
-        dest_dir=root / "artifacts" / "cxr_images_test",
+        dest_dir=root / "artifacts" / "cxr_test",
     )
+    print("Copying embedded train images to artifacts directory...")
+    __copy_embedded_images_to_arfifacts(
+        images_dir=root / "artifacts" / "cxr_train",
+        clinical_data=train_data,
+        dest_dir=root / "artifacts" / "embedded_train",
+    )
+    print("Copying embedded test images to artifacts directory...")
+    __copy_embedded_images_to_arfifacts(
+        images_dir=root / "artifacts" / "cxr_test",
+        clinical_data=test_data,
+        dest_dir=root / "artifacts" / "embedded_test",
+    )
+    print("Data processing complete.")
