@@ -10,8 +10,6 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-from src.utils import create_working_tabular_df, randomize_df, set_seed
-
 
 class ChestXrayDataset(Dataset):
     """
@@ -24,7 +22,6 @@ class ChestXrayDataset(Dataset):
         clinical_data: Path,
         cxr_images_dir: Path,
         transform: Optional[transforms.Compose] = None,
-        seed: int = 42,
     ):
         """
         Initialize the dataset.
@@ -32,23 +29,15 @@ class ChestXrayDataset(Dataset):
         Args:
             file_paths (FilePaths): Paths to the dataset files
             transform: Optional transform to be applied to the images
-            seed (int): Random seed for reproducibility
         """
 
         # Set default transform to ToTensor if none provided
         self.transform = transform if transform is not None else transforms.ToTensor()
         self.images_dir = cxr_images_dir
 
-        # Set seed first for reproducibility
-        set_seed(seed)  # Ensure reproducibility for any random operations
-
         # Load and preprocess tabular data
         clinical_df = pd.read_csv(clinical_data)
-        _clinical_df = create_working_tabular_df(clinical_df)
-
-        # Shuffle the dataset with the given seed
-        _randomized_df = randomize_df(_clinical_df, seed=seed)
-        self.tabular_df = _randomized_df
+        self.tabular_df = clinical_df
 
     def __len__(self) -> int:
         """Return the number of items in the dataset."""

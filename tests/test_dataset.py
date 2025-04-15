@@ -11,145 +11,100 @@ from PIL import Image
 from torchvision import transforms
 
 from src.data.dataset import ChestXrayDataset
-from src.data.download import FilePaths
 
 
 class TestChestXrayDataset(unittest.TestCase):
-    """Unit tests for the ChestXrayDataset class."""
+    """Test cases for the ChestXrayDataset class."""
 
     def setUp(self):
-        """Set up test data and environment."""
-        # Create a temporary directory for test data
-        self.temp_dir = Path(tempfile.mkdtemp())
-        self.images_dir = self.temp_dir / "images"
-        self.images_dir.mkdir()
+        """Set up test fixtures before each test method."""
+        # Create temporary directories
+        self.test_dir = tempfile.mkdtemp()
+        self.images_dir = Path(self.test_dir) / "images"
+        self.images_dir.mkdir(exist_ok=True)
 
-        # Create test images (10 images for better randomization testing)
-        self.image_names = [f"{str(i).zfill(8)}_000.png" for i in range(1, 11)]
-        for img_name in self.image_names:
-            # Create a simple test image (3 channels, 32x32)
-            img = Image.fromarray(np.zeros((32, 32, 3), dtype=np.uint8))
+        # Create dummy images
+        self.num_samples = 3
+        self.image_size = (64, 64)
+        self.image_names = []
+
+        for i in range(self.num_samples):
+            img_name = f"image_{i}.png"
+            self.image_names.append(img_name)
+            img = Image.fromarray(
+                np.random.randint(0, 255, (*self.image_size, 3), dtype=np.uint8)
+            )
             img.save(self.images_dir / img_name)
 
-        # Create test clinical data
+        # Create dummy clinical data
         self.clinical_data = pd.DataFrame(
             {
-                "Image Index": self.image_names,
-                "Finding Labels": [
-                    "Cardiomegaly",
-                    "No Finding",
-                    "Edema",
-                    "Mass",
-                    "Nodule",
-                    "Pneumonia",
-                    "Atelectasis",
-                    "Effusion",
-                    "Infiltration",
-                    "Pneumothorax",
-                ],
-                "Follow-up #": list(range(10)),
-                "Patient Age": [
-                    "058Y",
-                    "012M",
-                    "045Y",
-                    "067Y",
-                    "023Y",
-                    "034Y",
-                    "078Y",
-                    "019Y",
-                    "056Y",
-                    "042Y",
-                ],
-                "Patient Gender": ["M", "F", "M", "F", "M", "F", "M", "F", "M", "F"],
-                "View Position": [
-                    "PA",
-                    "AP",
-                    "PA",
-                    "AP",
-                    "PA",
-                    "AP",
-                    "PA",
-                    "AP",
-                    "PA",
-                    "AP",
-                ],
+                "imageIndex": self.image_names,
+                "patientAge": np.random.randint(20, 80, self.num_samples),
+                "patientGender": np.random.randint(0, 2, self.num_samples),
+                "viewPosition": np.random.randint(0, 2, self.num_samples),
+                "followUpNumber": np.random.randint(0, 5, self.num_samples),
+                "label_1": np.random.randint(0, 2, self.num_samples),
+                "label_2": np.random.randint(0, 2, self.num_samples),
             }
         )
 
-        # Save clinical data to a temporary CSV
-        self.clinical_data_path = self.temp_dir / "clinical_data.csv"
+        self.clinical_data_path = Path(self.test_dir) / "clinical_data.csv"
         self.clinical_data.to_csv(self.clinical_data_path, index=False)
 
-        # Create FilePaths object
-        self.file_paths = FilePaths(
-            images_dir=Path(self.images_dir),
-            clinical_data=Path(self.clinical_data_path),
+        # Create dataset instance
+        self.dataset = ChestXrayDataset(
+            clinical_data=self.clinical_data_path, cxr_images_dir=self.images_dir
         )
-
-    def test_initialization(self):
-        """Test dataset initialization."""
-        dataset = ChestXrayDataset(self.file_paths)
-        self.assertEqual(len(dataset), 10)
-        self.assertIsInstance(dataset.transform, transforms.ToTensor)
-
-    def test_getitem(self):
-        """Test dataset item retrieval."""
-        dataset = ChestXrayDataset(self.file_paths)
-        image, tabular, labels = dataset[0]
-
-        # Test image tensor
-        self.assertIsInstance(image, torch.Tensor)
-        self.assertEqual(image.shape, (3, 32, 32))
-
-        # Test tabular features
-        self.assertIsInstance(tabular, torch.Tensor)
-        self.assertEqual(tabular.shape[0], 4)  # 4 tabular features
-
-        # Test labels
-        self.assertIsInstance(labels, torch.Tensor)
-        self.assertEqual(labels.shape[0], 15)  # 15 possible conditions
-
-    def test_transform_application(self):
-        """Test that transforms are correctly applied."""
-        transform = transforms.Compose(
-            [transforms.ToTensor(), transforms.Normalize(mean=[0.485], std=[0.229])]
-        )
-        dataset = ChestXrayDataset(self.file_paths, transform=transform)
-        image, _, _ = dataset[0]
-
-        self.assertIsInstance(image, torch.Tensor)
-        self.assertEqual(image.shape, (3, 32, 32))
-
-    def test_different_seeds(self):
-        """Test that different seeds produce different data orderings."""
-        dataset1 = ChestXrayDataset(self.file_paths, seed=42)
-        dataset2 = ChestXrayDataset(self.file_paths, seed=42069)
-
-        # Compare the actual data ordering using image names
-        order1 = dataset1.tabular_df["imageIndex"].tolist()
-        order2 = dataset2.tabular_df["imageIndex"].tolist()
-
-        # With 10 items, the probability of getting same order is 1 in 3,628,800 (10!)
-        self.assertNotEqual(
-            order1, order2, "Different seeds should produce different image orderings"
-        )
-
-    def test_same_seed_reproducibility(self):
-        """Test that same seed produces same data ordering."""
-        dataset1 = ChestXrayDataset(self.file_paths, seed=42)
-        dataset2 = ChestXrayDataset(self.file_paths, seed=42)
-
-        # Compare the actual data ordering using image names
-        order1 = dataset1.tabular_df["imageIndex"].tolist()
-        order2 = dataset2.tabular_df["imageIndex"].tolist()
-
-        self.assertEqual(order1, order2)
 
     def tearDown(self):
-        """Clean up temporary files and directories."""
+        """Clean up test fixtures after each test method."""
         import shutil
 
-        shutil.rmtree(self.temp_dir)
+        shutil.rmtree(self.test_dir)
+
+    def test_init(self):
+        """Test dataset initialization."""
+        self.assertIsInstance(self.dataset, ChestXrayDataset)
+        self.assertEqual(len(self.dataset.tabular_df), self.num_samples)
+
+    def test_len(self):
+        """Test __len__ method."""
+        self.assertEqual(len(self.dataset), self.num_samples)
+
+    def test_getitem(self):
+        """Test __getitem__ method."""
+        idx = 0
+        image, tabular_features, labels = self.dataset[idx]
+
+        # Check types and shapes
+        self.assertIsInstance(image, torch.Tensor)
+        self.assertIsInstance(tabular_features, torch.Tensor)
+        self.assertIsInstance(labels, torch.Tensor)
+
+        self.assertEqual(image.shape, (3, *self.image_size))  # RGB image
+        self.assertEqual(tabular_features.shape, (4,))  # 4 tabular features
+        self.assertEqual(labels.shape, (2,))  # 2 labels
+
+    def test_custom_transform(self):
+        """Test dataset with custom transform."""
+        custom_transform = transforms.Compose(
+            [transforms.ToTensor(), transforms.Resize((32, 32))]
+        )
+
+        dataset = ChestXrayDataset(
+            clinical_data=self.clinical_data_path,
+            cxr_images_dir=self.images_dir,
+            transform=custom_transform,
+        )
+
+        image, _, _ = dataset[0]
+        self.assertEqual(image.shape, (3, 32, 32))
+
+    def test_invalid_index(self):
+        """Test accessing invalid index."""
+        with self.assertRaises(IndexError):
+            _ = self.dataset[len(self.dataset)]
 
 
 if __name__ == "__main__":
