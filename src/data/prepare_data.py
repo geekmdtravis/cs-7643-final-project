@@ -58,6 +58,9 @@ def __split_save_data(
     train_df: pd.DataFrame = __impute_and_normalize(split[0])
     test_df: pd.DataFrame = __impute_and_normalize(split[1])
 
+    if not output_dir.exists():
+        output_dir.mkdir(parents=True)
+
     # Save the split data to the specified directory
     train_df.to_csv(output_dir / "train.csv", index=False)
     test_df.to_csv(output_dir / "test.csv", index=False)
