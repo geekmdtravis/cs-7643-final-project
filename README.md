@@ -14,16 +14,18 @@
 *   `/src`: Core source code.
     *   `/data`: Dataset loading (`dataset.py`), data download (`download.py`), dataloader creation (`create_dataloaders.py`).
     *   `/models`: Model definitions (`densenet_201_vanilla.py`, `densenet_201_multimodal.py`). (ViT model to be added).
-    *   `/utils`: Utility functions - configuration (`config.py`), data preprocessing (`preprocessing.py`), image manipulation (`image_manipulation.py` - padding & embedding), system info (`sytem_info.py`).
+    *   `/utils`: Utility functions - configuration (`config.py`), data preprocessing (`preprocessing.py`), image manipulation (`image_manipulation.py` - embedding), system info (`sytem_info.py`), path utilities (`path_utils.py`).
     *   `/notebooks`: Jupyter notebooks for experiments, analysis, or exploration (e.g., initial model training, visualization).
-*   `/artifacts`: Stores processed data (e.g., `train.csv`, `test.csv`), embedded image examples.
+*   `/artifacts`: Stores processed data (`train.csv`, `test.csv`), original images (`cxr_train/`, `cxr_test/`), embedded images (`embedded_train/`, `embedded_test/`), and demo outputs (`demo/`).
 *   `/logs`: Log files generated during runs (configured in `src/utils/config.py`).
 *   `/results`: Stores model outputs.
     *   `/checkpoints`: Saved model weights.
     *   `/plots`: Performance plots (e.g., loss curves, ROC curves).
 *   `/tests`: Unit tests for various components (e.g., `test_dataset.py`, `test_image_manipulation.py`).
-*   `main.py`: Script for initial data download, preprocessing, and train/test split. (Future work: Extend to handle training/inference workflows).
-*   `demo_*.py`: Example scripts demonstrating specific functionalities (e.g., `demo_pad_embed_image.py`, `demo_dataset_usage.py`).
+*   `main.py`: Script for initial data download and a *basic* train/test split (primarily for quick setup). Use `prepare_data.py` for full processing.
+*   `prepare_data.py`: **Main script for data preparation.** Downloads, performs robust train/test split with imputation/normalization, copies original images, and creates embedded images required for training.
+*   `calculate_dataset_stats.py`: Utility script to compute mean and standard deviation for dataset-specific normalization.
+*   `demo_*.py`: Example scripts demonstrating specific functionalities (see Usage section).
 *   `environment.yaml`: Conda environment file for Linux/Windows.
 *   `environment_mac.yaml`: Conda environment file for macOS.
 *   `.env`: Local configuration file (create from example below).
@@ -66,24 +68,34 @@
     LOG_FILE=app.log    # Log file name (will be saved in /logs/)
     ```
 4.  **Download and Prepare Data:**
-    
-    Not presently implemented in `main.py`, 
-    look at the `demo_*` scripts.
+    *   Run the main data preparation script:
+        ```bash
+        python prepare_data.py
+        ```
+    *   This script performs the following essential steps:
+        1.  Downloads the NIH ChestX-ray14 dataset using the Kaggle API (if not already downloaded to the cache).
+        2.  Loads the clinical data (`Data_Entry_2017_v2020.csv`).
+        3.  Performs preprocessing, imputation, and normalization on the clinical data.
+        4.  Splits the data into training and testing sets, saving `artifacts/train.csv` and `artifacts/test.csv`.
+        5.  Copies the corresponding original PNG images from the Kaggle cache to `artifacts/cxr_train/` and `artifacts/cxr_test/`.
+        6.  Creates versions of the images with clinical data embedded in the top-left corner, saving them to `artifacts/embedded_train/` and `artifacts/embedded_test/`. These are used for the image embedding multi-modal approach.
+    *   *(Note: `python main.py` can be run for a quicker initial download and basic split, but `prepare_data.py` creates the fully processed data required by the dataloaders and embedding methods).*
 
 ## 4. Usage
 
-    Not presently implemented in `main.py`, 
-    look at the `demo_*` scripts.
-
-*   **Data Setup:** Ensure you have run `python main.py` successfully (Step 3.4) to create `artifacts/train.csv` and `artifacts/test.csv`.
+*   **Data Setup:** Ensure you have successfully run `python prepare_data.py` (Step 3.4) to generate the necessary CSV files and image directories within `/artifacts`.
 *   **Training & Inference (Current Status):**
-    *   Currently, training and inference logic is not centralized in `main.py`.
-    *   Look for specific training scripts or Jupyter notebooks within the `/src/notebooks/` directory to run experiments. These notebooks/scripts likely utilize the `ChestXrayDataset` from `src/data/dataset.py`, models from `src/models/`, and configuration from `src/utils/config.py`.
-    *   *(Future Work: Implement command-line interface in `main.py` for streamlined training and inference, e.g., `python main.py --train --config config.yaml` or `python main.py --infer --checkpoint model.pth`)*
+    *   Currently, training and inference logic is not centralized.
+    *   Look for specific training scripts or Jupyter notebooks within the `/src/notebooks/` directory to run experiments.
+    *   These notebooks/scripts will typically use:
+        *   `src.data.create_dataloader` to load data (using images from `artifacts/embedded_train` or `artifacts/cxr_train`).
+        *   Models defined in `src/models/`.
+        *   Configuration loaded via `src/utils/config.py` (reading from `.env`).
+    *   *(Future Work: Implement a command-line interface, potentially in `main.py`, for streamlined training and inference, e.g., `python main.py --mode train --config config.yaml` or `python main.py --mode infer --checkpoint model.pth`)*
 *   **Demo Scripts:**
-    *   `demo_pad_embed_image.py`: Demonstrates padding images and embedding tabular data into the image tensor. Run with `python demo_pad_embed_image.py`. Generates example images in `/artifacts`.
-    *   `demo_densenet_vanilla.py`: Shows basic inference using the vanilla DenseNet model on a sample ImageNet image (not ChestX-ray data). Run with `python demo_densenet_vanilla.py`.
-    *   `demo_dataset_usage.py`: Illustrates how to instantiate and use the `ChestXrayDataset` and associated dataloaders. Run with `python demo_dataset_usage.py`.
+    *   `demo_dataloader.py`: Demonstrates how to use `create_dataloader` to load the processed data (specifically from `artifacts/embedded_train`). It processes batches with different normalization settings ('none', 'dataset_specific', 'imagenet') and saves sample output images to `artifacts/demo/` for visualization. Run with `python demo_dataloader.py`.
+    *   `demo_densenet_vanilla.py`: Shows basic inference using the `DenseNet201Vanilla` model on a generic sample ImageNet image (not ChestX-ray data) to verify the model class works. Run with `python demo_densenet_vanilla.py`.
+    *   `calculate_dataset_stats.py`: Computes the mean and standard deviation of the training dataset (grayscale pixel values from `artifacts/embedded_train`). Useful for the `dataset_specific` normalization mode. Run with `python calculate_dataset_stats.py`.
 
 ## 5. Models & Multi-Modal Integration
 
@@ -94,8 +106,14 @@
     *   **Concatenation Approach:** Takes the DenseNet-201 image features, concatenates them with the input tabular data tensor, and passes them through a custom multi-layer classifier head.
 *   **Vision Transformer (ViT) - Planned:**
     - Still selecting model, but likely a variant of DeiT.
-    - Plan an embedding approach, and add a custom classifier head similar to the CNN. 
+    *   Plan an embedding approach (using `src.utils.image_manipulation.embed_clinical_data_into_image` during data preparation via `prepare_data.py`) and add a custom classifier head similar to the CNN.
 
-## 6. Future Work / .Contribution
+## 6. Future Work / Contribution
 
-*   Need to discuss. 
+*   Implement Vision Transformer (ViT) models (e.g., DeiT) and integrate them using the image embedding approach.
+*   Develop centralized training and inference scripts/workflows (e.g., extending `main.py` or creating new scripts like `train.py`, `infer.py`).
+*   Conduct and document comprehensive experiments comparing baseline, concatenation, and embedding approaches across different model backbones (CNN, ViT).
+*   Expand evaluation metrics (e.g., precision, recall, F1-score per class, ROC AUC).
+*   Refine data preprocessing and augmentation strategies.
+*   Add more comprehensive unit and integration tests.
+*   Explore other multi-modal fusion techniques.
