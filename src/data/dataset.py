@@ -10,7 +10,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-from src.utils.preprocessing import create_working_tabular_df, randomize_df, set_seed
+from src.utils import create_working_tabular_df, randomize_df, set_seed
 
 
 class ChestXrayDataset(Dataset):
