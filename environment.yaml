@@ -19,6 +19,7 @@ dependencies:
   - tqdm>=4.65.0
   - wandb>=0.15.0 # For experiment tracking
   - timm>=1.0.0 # For Vision Transformer models
+  - jinja2>=3.1.0
   - pip:
       - kagglehub>=0.1.0 # For downloading dataset
       - pytorch-lightning>=2.0.0 # Optional: for structured training loops
