@@ -15,6 +15,9 @@ class ChestXrayDataset(Dataset):
     """
     Custom dataset for the NIH Chest X-ray dataset.
     Returns a tuple of (image, tabular_features, labels) for each item.
+    Upon initialization, the location of the images and the
+    clinical data CSV file are provided and the dataset organizes
+    the data accordingly, for use with the PyTorch DataLoader.
     """
 
     def __init__(
@@ -31,13 +34,10 @@ class ChestXrayDataset(Dataset):
             transform: Optional transform to be applied to the images
         """
 
-        # Set default transform to ToTensor if none provided
         self.transform = transform if transform is not None else transforms.ToTensor()
         self.images_dir = cxr_images_dir
 
-        # Load and preprocess tabular data
-        clinical_df = pd.read_csv(clinical_data)
-        self.tabular_df = clinical_df
+        self.tabular_df = pd.read_csv(clinical_data)
 
     def __len__(self) -> int:
         """Return the number of items in the dataset."""

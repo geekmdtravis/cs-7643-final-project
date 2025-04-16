@@ -90,7 +90,10 @@ class Config:
     Attributes:
         artifacts_dir (Path): Path to the artifacts directory.
         batch_size (int): Batch size for training.
-        clinical_data (Path): Path to clinical tabular CSV data.
+        tabular_clinical_train (Path): Path to training clinical
+            tabular CSV data.
+        tabular_clinical_test (Path): Path to testing clinical
+            tabular CSV data.
         cxr_test_dir: Path to unmodified CXR images for testing.
         cxr_train_dir: Path to unmodified CXR images for training.
         embedded_test_dir: Path to embedded CXR images for testing.
@@ -110,7 +113,8 @@ class Config:
     Default values:
         artifacts_dir: PROJECT_ROOT / 'artifacts'
         batch_size: 32
-        clinical_data: PROJECT_ROOT / 'artifacts' / 'train.csv'
+        tabular_clinical_train: PROJECT_ROOT / 'artifacts' / 'train.csv'
+        tabular_clinical_test: PROJECT_ROOT / 'artifacts' / 'test.csv'
         cxr_test_dir: PROJECT_ROOT / 'artifacts' / 'cxr_test'
         cxr_train_dir: PROJECT_ROOT / 'artifacts' / 'cxr_train'
         demo_dir: PROJECT_ROOT / 'artifacts' / 'demo'
@@ -135,7 +139,8 @@ class Config:
 
     artfacts_dir: Path = PROJECT_ROOT / "artifacts"
     batch_size: int = int(BATCH_SIZE) or 16
-    clinical_data: Path = PROJECT_ROOT / "artifacts" / "train.csv"
+    tabular_clinical_train: Path = PROJECT_ROOT / "artifacts" / "train.csv"
+    tabular_clinical_test: Path = PROJECT_ROOT / "artifacts" / "test.csv"
     cxr_test_dir: Path = PROJECT_ROOT / "artifacts" / "cxr_test"
     cxr_train_dir: Path = PROJECT_ROOT / "artifacts" / "cxr_train"
     demo_dir: Path = PROJECT_ROOT / "artifacts" / "demo"

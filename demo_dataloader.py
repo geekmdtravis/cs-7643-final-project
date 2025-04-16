@@ -61,7 +61,7 @@ def main():
     # Use batch_size=10 to match the image saving limit easily
     # Set shuffle=False to get consistent images for comparison
     loader_args = {
-        "clinical_data": cfg.clinical_data,
+        "clinical_data": cfg.tabular_clinical_train,
         "cxr_images_dir": cfg.cxr_train_dir,
         "batch_size": 10,
         "num_workers": 0,  # Use 0 workers for simplicity and consistency in demo

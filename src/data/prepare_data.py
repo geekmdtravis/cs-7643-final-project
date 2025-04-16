@@ -23,9 +23,11 @@ from src.utils import (
     embed_clinical_data_into_image,
     set_seed,
     train_test_split,
+    Config
 )
 from src.utils.path_utils import get_project_root
 
+cfg = Config()
 
 def __split_save_data(
     clinical_data: Path,
@@ -202,11 +204,10 @@ def process_data(test_size: float = 0.2, seed: int = 42) -> None:
 
     clinical_data, cxr_images_dir = download_dataset()
 
-    root = get_project_root()
     print("Saving processed clinical data to artifacts directory...")
     __split_save_data(
         clinical_data=clinical_data,
-        output_dir=root / "artifacts",
+        output_dir=cfg.artfacts_dir,
         test_size=test_size,
         seed=seed,
     )
