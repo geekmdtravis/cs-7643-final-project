@@ -4,9 +4,9 @@ import torch
 import torchvision.transforms as T
 
 from src.data import create_dataloader
-from src.utils.path_utils import get_project_root
+from src.utils import Config, get_system_info
 
-# PIL.Image is used implicitly by T.ToPILImage
+cfg = Config()
 
 
 def save_tensor_as_image(tensor: torch.Tensor, save_path: Path):
@@ -54,35 +54,32 @@ def process_and_save_batch(
 
 def main():
     print("Initializing demo...")
-    root = get_project_root()
-    train_cxrs_dir = root / "artifacts" / "embedded_train"
-    train_tabular = root / "artifacts" / "train.csv"
-    demo_dir = root / "artifacts" / "demo"
-    demo_dir.mkdir(parents=True, exist_ok=True)
+    sys_info = get_system_info()
+    print(sys_info)
 
     # Common dataloader settings for the demo
     # Use batch_size=10 to match the image saving limit easily
     # Set shuffle=False to get consistent images for comparison
     loader_args = {
-        "clinical_data": train_tabular,
-        "cxr_images_dir": train_cxrs_dir,
+        "clinical_data": cfg.clinical_data,
+        "cxr_images_dir": cfg.cxr_train_dir,
         "batch_size": 10,
         "num_workers": 0,  # Use 0 workers for simplicity and consistency in demo
     }
 
     # --- Process with 'none' normalization ---
     loader_none = create_dataloader(**loader_args, normalization_mode="none")
-    process_and_save_batch(loader_none, "none", demo_dir)
+    process_and_save_batch(loader_none, "none", cfg.demo_dir)
 
     # --- Process with 'dataset_specific' normalization ---
     loader_dataset = create_dataloader(
         **loader_args, normalization_mode="dataset_specific"
     )
-    process_and_save_batch(loader_dataset, "dataset", demo_dir)
+    process_and_save_batch(loader_dataset, "dataset", cfg.demo_dir)
 
     # --- Process with 'imagenet' normalization ---
     loader_imagenet = create_dataloader(**loader_args, normalization_mode="imagenet")
-    process_and_save_batch(loader_imagenet, "imagenet", demo_dir)
+    process_and_save_batch(loader_imagenet, "imagenet", cfg.demo_dir)
 
     print("\nDemo finished. Check the 'artifacts/demo' directory for output images.")
 

@@ -1,5 +1,6 @@
 """Helper functions for creating dataloaders for the NIH Chest X-ray dataset."""
 
+import logging
 from pathlib import Path
 from typing import Literal
 
@@ -22,7 +23,7 @@ def create_dataloader(
     batch_size: int = 32,
     num_workers: int = 4,
     normalization_mode: NormalizationMode = "imagenet",
-) -> DataLoader:  # Return type is just one DataLoader now
+) -> DataLoader:
     """
     Create train and test dataloaders for the NIH Chest X-ray dataset.
 
@@ -36,9 +37,24 @@ def create_dataloader(
     Returns:
         DataLoader: The created dataloader.
     """
+    logging.debug(
+        "create_dataloader: Creating dataloader with the following parameters:\n"
+        "\t- clinical_data: %s\n"
+        "\t- cxr_images_dir: %s\n"
+        "\t- batch_size: %d\n"
+        "\t- num_workers: %d\n"
+        "\t- normalization_mode: %s",
+        clinical_data,
+        cxr_images_dir,
+        batch_size,
+        num_workers,
+        normalization_mode,
+    )
     if batch_size <= 0:
+        logging.error("Batch size must be a positive integer.")
         raise ValueError("batch_size must be a positive integer.")
     if num_workers < 0:
+        logging.error("Number of workers must be a non-negative integer.")
         raise ValueError("num_workers must be a non-negative integer.")
 
     # Base transform
@@ -46,32 +62,39 @@ def create_dataloader(
 
     # Add normalization based on mode
     if normalization_mode == "imagenet":
-        print("Using ImageNet normalization.")
+        logging.info("create_dataloader: Using ImageNet normalization.")
         transform_list.append(
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         )
     elif normalization_mode == "dataset_specific":
-        print(f"Using dataset norm (Mean: {DATASET_MEAN:.4f}, Std: {DATASET_STD:.4f}).")
+        logging.info(
+            "create_dataloader: Using dataset norm "
+            f"(Mean: {DATASET_MEAN:.4f}, Std: {DATASET_STD:.4f})."
+        )
         # Apply the same mean/std to all 3 channels since the dataset converts to RGB
         transform_list.append(
             transforms.Normalize(mean=[DATASET_MEAN] * 3, std=[DATASET_STD] * 3)
         )
     elif normalization_mode == "none":
-        print("No normalization applied.")
-        pass  # Only ToTensor is used
+        # Only ToTensor is used
+        logging.info("create_dataloader: No normalization applied.")
+        pass
     else:
-        raise ValueError(f"Unknown normalization_mode: {normalization_mode}")
+        logging.error(
+            f"create_dataloader: Unknown normalization_mode: {normalization_mode}"
+        )
+        raise ValueError(
+            f"create_dataloader: Unknown normalization_mode: {normalization_mode}"
+        )
 
     transform = transforms.Compose(transform_list)
 
-    # Create dataset
     dataset = ChestXrayDataset(
         clinical_data=clinical_data,
         cxr_images_dir=cxr_images_dir,
         transform=transform,
     )
 
-    # Create dataloaders
     loader = DataLoader(
         dataset,
         batch_size=batch_size,
