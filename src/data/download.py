@@ -3,6 +3,7 @@ Download the NIH Chest X-ray dataset using kagglehub.
 This script downloads the dataset and provides a dataclass to hold the file paths.
 """
 
+import logging
 import sys
 from pathlib import Path
 
@@ -11,10 +12,9 @@ import kagglehub
 
 def download_dataset() -> tuple[Path, Path]:
     """
-    Download the NIH Chest X-ray dataset using kagglehub.
-
-    Args:
-        target_dir: Directory where the dataset should be stored
+    Download the NIH Chest X-ray dataset using kagglehub and
+    return the paths to the clinical data CSV file and images directory.
+    The dataset is downloaded to a cache directory managed by kagglehub.
 
     Returns:
         tuple: Paths to the clinical data CSV file and images directory
@@ -30,32 +30,30 @@ def download_dataset() -> tuple[Path, Path]:
     - https://www.kaggle.com/datasets/khanfashee/nih-chest-x-ray-14-224x224-resized
     """
     try:
-        # Create target directory if it doesn't exist
-        target_path = Path()
-        target_path.mkdir(parents=True, exist_ok=True)
-
-        print("Downloading NIH Chest X-ray dataset...")
-        # Download dataset
-        # Download dataset using the default cache location
-        # Removing the 'path' argument resolved the download issue.
+        logging.info("download_dataset: Downloading NIH Chest X-ray dataset...")
         cache_path = kagglehub.dataset_download(
             "khanfashee/nih-chest-x-ray-14-224x224-resized"
         )
 
     except (IOError, OSError) as e:
-        print(f"Error with file operations: {e}", file=sys.stderr)
+        logging.error(
+            f"download_dataset: Error with file operations: {e}", file=sys.stderr
+        )
         sys.exit(1)
     except ValueError as e:
-        print(f"Invalid value error: {e}", file=sys.stderr)
+        logging.error(f"download_dataset: Invalid value error: {e}", file=sys.stderr)
         sys.exit(1)
     except RuntimeError as e:
-        print(f"Runtime error downloading dataset: {e}", file=sys.stderr)
+        logging.error(
+            f"download_dataset: Runtime error downloading dataset: {e}", file=sys.stderr
+        )
         sys.exit(1)
     except Exception as e:  # pylint: disable=broad-except
-        print(f"An unexpected error occurred: {e}", file=sys.stderr)
+        logging.error(
+            f"download_dataset: An unexpected error occurred: {e}", file=sys.stderr
+        )
         sys.exit(1)
 
-    # Define file paths
     cache_path = Path(cache_path)
     clinical_data = cache_path / "Data_Entry_2017.csv"
     images_dir = cache_path / "images-224/images-224/"

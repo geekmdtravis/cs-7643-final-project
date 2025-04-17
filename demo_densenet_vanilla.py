@@ -46,12 +46,11 @@ def preprocess_image(image: Image.Image) -> torch.Tensor:
 def run_inference():
     """Run inference on a sample image using DenseNet201Vanilla."""
     # Initialize model and set to evaluation mode
-    model = DenseNet201Vanilla()
+    model = DenseNet201Vanilla(num_classes=1_000)
     model.eval()
 
     # Sample image URL (fluffy white dog)
-    image_url = ("https://raw.githubusercontent.com/pytorch/"
-                 "hub/master/images/dog.jpg")
+    image_url = "https://raw.githubusercontent.com/pytorch/hub/master/images/dog.jpg"
 
     try:
         # Download and preprocess image
