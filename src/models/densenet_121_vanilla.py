@@ -14,7 +14,8 @@ class DenseNet121Vanilla(nn.Module):
 
     def __init__(self, num_classes: int = 15):
         super(DenseNet121Vanilla, self).__init__()
-        # ChestXNet used pretrained=True instead of weights=DenseNet121_Weights.IMAGENET1K_V1
+        # ChestXNet used pretrained=True
+        # instead of weights=DenseNet121_Weights.IMAGENET1K_V1
         self.model = densenet121(weights=DenseNet121_Weights.IMAGENET1K_V1)
         num_features = self.model.classifier.in_features
 
