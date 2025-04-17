@@ -20,7 +20,7 @@ def download_image(url) -> Image.Image:
 def load_imagenet_labels():
     """Load ImageNet class labels."""
     url = "https://raw.githubusercontent.com/pytorch/hub/master/imagenet_classes.txt"
-    response = requests.get(url, timeout=10_000)
+    response = requests.get(url, timeout=30)
     if response.status_code != 200:
         raise requests.RequestException(f"Failed to load labels from {url}")
     labels = response.text.strip().split("\n")
