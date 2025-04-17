@@ -25,14 +25,19 @@ def create_dataloader(
     normalization_mode: NormalizationMode = "imagenet",
 ) -> DataLoader:
     """
-    Create train and test dataloaders for the NIH Chest X-ray dataset.
+    Create a dataloader from a combination of CXR imaging data
+    and tabular data.
 
     Args:
-        file_paths (FilePaths): Paths to the dataset files
+        clinical_data (Path): Path to the tabular data.
+        cxr_images_dir (Path): Path to the directory containing CXR images.
         batch_size (int): Batch size for the dataloaders
-        train_ratio (float): Ratio of data to use for training (0 < train_ratio < 1)
-        seed (int): Random seed for reproducibility
         num_workers (int): Number of workers for data loading
+        normalization_mode (NormalizationMode): Normalization mode for the images.
+            Options are "imagenet", "dataset_specific", or "none".
+            "imagenet" applies ImageNet normalization,
+            "dataset_specific" applies dataset-specific normalization,
+            and "none" applies no normalization.
 
     Returns:
         DataLoader: The created dataloader.
