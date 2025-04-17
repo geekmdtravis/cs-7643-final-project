@@ -70,8 +70,7 @@ def shuffle_split_save(
     test_df.to_csv(output_dir / "test.csv", index=False)
 
 
-def imput_and_normalize(df: pd.DataFrame) -> pd.DataFrame:
-    """
+def impute_and_normalize(df: pd.DataFrame) -> pd.DataFrame:
     Impute missing or outlier data, and normalize values to [0,1] range.
 
     Returns:
