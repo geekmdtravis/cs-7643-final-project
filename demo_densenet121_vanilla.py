@@ -8,6 +8,7 @@ from PIL import Image
 
 from src.models import DenseNet121Vanilla  # Updated import
 
+
 def download_image(url) -> Image.Image:
     """Download an image from a URL."""
     response = requests.get(url, timeout=10_000)

@@ -44,12 +44,14 @@ class DenseNet121MultiModal(nn.Module):
         layers = []
         input_dim = image_features + tabular_features
         for hidden_dim in hidden_dims:
-            layers.extend([
-                nn.Linear(input_dim, hidden_dim),
-                nn.ReLU(),
-                nn.BatchNorm1d(hidden_dim),
-                nn.Dropout(dropout)
-            ])
+            layers.extend(
+                [
+                    nn.Linear(input_dim, hidden_dim),
+                    nn.ReLU(),
+                    nn.BatchNorm1d(hidden_dim),
+                    nn.Dropout(dropout),
+                ]
+            )
             input_dim = hidden_dim
 
         layers.append(nn.Linear(input_dim, num_classes))
