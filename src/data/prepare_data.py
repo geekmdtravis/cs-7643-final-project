@@ -58,8 +58,8 @@ def shuffle_split_save(
 
     # Split the data into training and testing sets
     split = train_test_split(_clinical_df, test_size=test_size, seed=seed)
-    train_df: pd.DataFrame = imput_and_normalize(split[0])
-    test_df: pd.DataFrame = imput_and_normalize(split[1])
+    train_df: pd.DataFrame = impute_and_normalize(split[0])
+    test_df: pd.DataFrame = impute_and_normalize(split[1])
 
     if not output_dir.exists():
         error = f"shuffle_split_save: output_dir={output_dir} does not exist"
@@ -71,6 +71,7 @@ def shuffle_split_save(
 
 
 def impute_and_normalize(df: pd.DataFrame) -> pd.DataFrame:
+    """
     Impute missing or outlier data, and normalize values to [0,1] range.
 
     Returns:
