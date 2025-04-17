@@ -11,7 +11,7 @@ from src.models import DenseNet121Vanilla  # Updated import
 
 def download_image(url) -> Image.Image:
     """Download an image from a URL."""
-    response = requests.get(url, timeout=10_000)
+    response = requests.get(url, timeout=30)
     if response.status_code != 200:
         raise requests.RequestException(f"Failed to download image from {url}")
     return Image.open(BytesIO(response.content))
