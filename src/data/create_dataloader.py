@@ -103,7 +103,7 @@ def create_dataloader(
     loader = DataLoader(
         dataset,
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=False,
         num_workers=num_workers,
         pin_memory=True,
     )

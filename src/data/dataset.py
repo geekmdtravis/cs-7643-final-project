@@ -30,8 +30,11 @@ class ChestXrayDataset(Dataset):
         Initialize the dataset.
 
         Args:
-            file_paths (FilePaths): Paths to the dataset files
-            transform: Optional transform to be applied to the images
+            clinical_data (Path): Path to the CSV file containing clinical data.
+            cxr_images_dir (Path): Path to the directory containing CXR images.
+            transform (Optional[transforms.Compose]): Optional transform to be applied
+                on the images. If None, a default ToTensor transform is applied.
+
         """
 
         self.transform = transform if transform is not None else transforms.ToTensor()
@@ -45,7 +48,7 @@ class ChestXrayDataset(Dataset):
 
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
-        Get an item from the dataset.
+        Get an item (a tuple) from the dataset.
 
         Args:
             idx (int): Index of the item to get

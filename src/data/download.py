@@ -12,10 +12,9 @@ import kagglehub
 
 def download_dataset() -> tuple[Path, Path]:
     """
-    Download the NIH Chest X-ray dataset using kagglehub.
-
-    Args:
-        target_dir: Directory where the dataset should be stored
+    Download the NIH Chest X-ray dataset using kagglehub and
+    return the paths to the clinical data CSV file and images directory.
+    The dataset is downloaded to a cache directory managed by kagglehub.
 
     Returns:
         tuple: Paths to the clinical data CSV file and images directory

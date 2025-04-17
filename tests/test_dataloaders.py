@@ -10,7 +10,7 @@ import torch
 from PIL import Image
 from torch.utils.data import DataLoader
 
-from src.data.create_dataloaders import create_dataloader
+from src.data.create_dataloader import create_dataloader
 
 
 class TestDataloaders(unittest.TestCase):
