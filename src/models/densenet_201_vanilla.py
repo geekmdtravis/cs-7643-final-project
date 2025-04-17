@@ -4,7 +4,7 @@ DenseNet-201 Vanilla Model
 
 import torch
 import torch.nn as nn
-from torchvision.models import densenet201, DenseNet201_Weights
+from torchvision.models import DenseNet201_Weights, densenet201
 
 
 class DenseNet201Vanilla(nn.Module):
@@ -12,7 +12,7 @@ class DenseNet201Vanilla(nn.Module):
     Vanilla DenseNet-201 model from torchvision with ImageNet pretrained weights
     """
 
-    def __init__(self, num_classes: int = 1000):
+    def __init__(self, num_classes: int = 15):
         super(DenseNet201Vanilla, self).__init__()
         self.model = densenet201(weights=DenseNet201_Weights.IMAGENET1K_V1)
         num_features = self.model.classifier.in_features

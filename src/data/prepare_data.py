@@ -9,6 +9,7 @@ This script will copy the origimal images to
 images to {workspace}/artifacts/embedded_images.
 """
 
+import logging
 from pathlib import Path
 
 import pandas as pd
@@ -19,15 +20,17 @@ from tqdm import tqdm
 
 from src.data import download_dataset
 from src.utils import (
+    Config,
     create_working_tabular_df,
     embed_clinical_data_into_image,
     set_seed,
     train_test_split,
 )
-from src.utils.path_utils import get_project_root
+
+cfg = Config()
 
 
-def __split_save_data(
+def shuffle_split_save(
     clinical_data: Path,
     output_dir: Path,
     test_size: float = 0.2,
@@ -55,20 +58,25 @@ def __split_save_data(
 
     # Split the data into training and testing sets
     split = train_test_split(_clinical_df, test_size=test_size, seed=seed)
-    train_df: pd.DataFrame = __impute_and_normalize(split[0])
-    test_df: pd.DataFrame = __impute_and_normalize(split[1])
+    train_df: pd.DataFrame = impute_and_normalize(split[0])
+    test_df: pd.DataFrame = impute_and_normalize(split[1])
 
     if not output_dir.exists():
-        output_dir.mkdir(parents=True)
+        error = f"shuffle_split_save: output_dir={output_dir} does not exist"
+        logging.error(error)
+        raise FileNotFoundError(error)
 
-    # Save the split data to the specified directory
     train_df.to_csv(output_dir / "train.csv", index=False)
     test_df.to_csv(output_dir / "test.csv", index=False)
 
 
-def __impute_and_normalize(df: pd.DataFrame) -> pd.DataFrame:
+def impute_and_normalize(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Impute and normalize values to [0,1] range.
+    Impute missing or outlier data, and normalize values to [0,1] range.
+
+    Returns:
+        pd.DataFrame: DataFrame with imputed and normalized values as
+            a new DataFrame.
     """
     new_df = df.copy()
 
@@ -90,15 +98,15 @@ def __impute_and_normalize(df: pd.DataFrame) -> pd.DataFrame:
     return new_df
 
 
-def __copy_images_to_artifacts(
+def copy_cached_imgs_to_artifacts(
     clinical_data: Path,
     kaggle_cache_cxr_dir: Path,
-    dest_dir: Path | None = None,
+    dest_dir: Path,
 ) -> None:
     """
     For the CXR files identified in the clinical data,
     copy the images from the Kaggle cache to the
-    {workspace}/artifacts/cxr_images directory. The clinical data
+    {workspace}/artifacts/{dest_dir}. The clinical data
     being pointed to is expected to be the one that was
     already split into train and test sets.
 
@@ -110,28 +118,31 @@ def __copy_images_to_artifacts(
         clinical_data (Path): Path to the clinical data CSV file.
         kaggle_cache_cxr_dir (Path): Path to the Kaggle cache directory
             containing CXR images.
-        dest_dir (Path | None): Directory where the images will be
-            copied. If None, defaults to
-            {workspace}/artifacts/cxr_images.
+        dest_dir (Path ): Directory where the images will be
+            copied.
 
     Returns:
         None
     """
-    if dest_dir is None:
-        project_root = get_project_root()
-        artifacts_dir = project_root / "artifacts"
-        if not artifacts_dir.exists():
-            artifacts_dir.mkdir(parents=True)
-        dest_dir = artifacts_dir / "cxr_images"
+    if not dest_dir.exists():
+        error = f"copy_cached_imgs_to_artifacts: dest_dir={dest_dir} does not exist"
+        logging.error(error)
+        raise FileNotFoundError(error)
 
     if not kaggle_cache_cxr_dir.exists():
-        raise FileNotFoundError(f"{kaggle_cache_cxr_dir} does not exist.")
+        error = (
+            "copy_cached_imgs_to_artifacts: given kaggle cache "
+            f"directory {kaggle_cache_cxr_dir} does not exist."
+        )
+        logging.error(error)
+        raise FileNotFoundError(error)
+
     if not kaggle_cache_cxr_dir.is_dir():
-        raise NotADirectoryError(f"{kaggle_cache_cxr_dir} is not a directory.")
-    if not dest_dir.exists():
-        dest_dir.mkdir(parents=True)
-    if not dest_dir.is_dir():
-        raise NotADirectoryError(f"{dest_dir} is not a directory.")
+        error = (
+            f"copy_cached_imgs_to_artifacts: {kaggle_cache_cxr_dir} is not a directory."
+        )
+        logging.error(error)
+        raise NotADirectoryError(error)
 
     clinical_df = pd.read_csv(clinical_data)
     # Get set of valid image indices for faster lookup
@@ -147,19 +158,22 @@ def __copy_images_to_artifacts(
             dest_image.write_bytes(image.read_bytes())
         else:
             raise FileNotFoundError(f"{image} is not a file.")
-    print(f"Copied images from {kaggle_cache_cxr_dir} to {dest_dir}.")
+    logging.info(
+        "copy_cached_imgs_to_artifacts: Copied images "
+        f"from {kaggle_cache_cxr_dir} to {dest_dir}."
+    )
 
 
-def __copy_embedded_images_to_arfifacts(
+def create_save_embedded_images(
     images_dir: Path, clinical_data: Path, dest_dir: Path
 ) -> None:
     """
     Copy the embedded images to the artifacts directory.
     """
     if not dest_dir.exists():
-        dest_dir.mkdir(parents=True)
-    if not dest_dir.is_dir():
-        raise NotADirectoryError(f"{dest_dir} is not a directory.")
+        error = f"create_save_embedded_images: dest_dir={dest_dir} does not exist"
+        logging.error(error)
+        raise FileNotFoundError(error)
 
     clinical_df = pd.read_csv(clinical_data)
 
@@ -188,7 +202,9 @@ def __copy_embedded_images_to_arfifacts(
             embedded_pil_image.save(save_path)
 
         else:
-            raise FileNotFoundError(f"{image} is not a file.")
+            error = f"create_save_embedded_images: {image} is not a file."
+            logging.error(error)
+            raise FileNotFoundError(error)
 
 
 def process_data(test_size: float = 0.2, seed: int = 42) -> None:
@@ -200,42 +216,40 @@ def process_data(test_size: float = 0.2, seed: int = 42) -> None:
     `{workspace}/artifacts/embedded_{train|test}`.
     """
 
-    clinical_data, cxr_images_dir = download_dataset()
+    cached_clin_data, cached_cxr_imgs_dir = download_dataset()
 
-    root = get_project_root()
-    print("Saving processed clinical data to artifacts directory...")
-    __split_save_data(
-        clinical_data=clinical_data,
-        output_dir=root / "artifacts",
+    logging.info("process_data: Saving processed clinical data to artifacts directory.")
+    shuffle_split_save(
+        clinical_data=cached_clin_data,
+        output_dir=cfg.artifacts,
         test_size=test_size,
         seed=seed,
     )
 
-    test_data = root / "artifacts" / "test.csv"
-    train_data = root / "artifacts" / "train.csv"
-
-    print("Copying unmodified train images to artifacts directory...")
-    __copy_images_to_artifacts(
-        clinical_data=train_data,
-        kaggle_cache_cxr_dir=cxr_images_dir,
-        dest_dir=root / "artifacts" / "cxr_train",
+    logging.info(
+        "process_data: Copying unmodified train images to artifacts directory."
     )
-    print("Copying unmodified test images to artifacts directory...")
-    __copy_images_to_artifacts(
-        clinical_data=test_data,
-        kaggle_cache_cxr_dir=cxr_images_dir,
-        dest_dir=root / "artifacts" / "cxr_test",
+    copy_cached_imgs_to_artifacts(
+        clinical_data=cfg.tabular_clinical_train,
+        kaggle_cache_cxr_dir=cached_cxr_imgs_dir,
+        dest_dir=cfg.cxr_train_dir,
     )
-    print("Copying embedded train images to artifacts directory...")
-    __copy_embedded_images_to_arfifacts(
-        images_dir=root / "artifacts" / "cxr_train",
-        clinical_data=train_data,
-        dest_dir=root / "artifacts" / "embedded_train",
+    logging.info("process_data: Copying unmodified test images to artifacts directory.")
+    copy_cached_imgs_to_artifacts(
+        clinical_data=cfg.tabular_clinical_test,
+        kaggle_cache_cxr_dir=cached_cxr_imgs_dir,
+        dest_dir=cfg.cxr_test_dir,
     )
-    print("Copying embedded test images to artifacts directory...")
-    __copy_embedded_images_to_arfifacts(
-        images_dir=root / "artifacts" / "cxr_test",
-        clinical_data=test_data,
-        dest_dir=root / "artifacts" / "embedded_test",
+    logging.info("process_data: Copying embedded train images to artifacts directory.")
+    create_save_embedded_images(
+        images_dir=cfg.cxr_train_dir,
+        clinical_data=cfg.tabular_clinical_train,
+        dest_dir=cfg.embedded_train_dir,
     )
-    print("Data processing complete.")
+    logging.info("process_data: Copying embedded test images to artifacts directory.")
+    create_save_embedded_images(
+        images_dir=cfg.cxr_test_dir,
+        clinical_data=cfg.tabular_clinical_test,
+        dest_dir=cfg.embedded_test_dir,
+    )
+    logging.info("process_data: Data processing complete.")
