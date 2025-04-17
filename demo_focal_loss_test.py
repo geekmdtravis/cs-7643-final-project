@@ -1,7 +1,6 @@
 """Demo script to test Focal Loss implementation with DenseNet201Vanilla model."""
 
 import torch
-import torch.nn as nn
 import matplotlib.pyplot as plt
 from src.models.densenet_201_vanilla import DenseNet201Vanilla
 from src.losses.focal_loss import FocalLoss, reweight
