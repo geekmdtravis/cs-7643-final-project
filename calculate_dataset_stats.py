@@ -1,11 +1,12 @@
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
-from torchvision import transforms
 from tqdm import tqdm
 
 from src.data.dataset import ChestXrayDataset
-from src.utils.path_utils import get_project_root
+from src.utils import Config
+
+cfg = Config()
 
 
 def calculate_stats(loader: DataLoader, num_samples: int) -> tuple[float, float]:
@@ -38,24 +39,18 @@ def calculate_stats(loader: DataLoader, num_samples: int) -> tuple[float, float]
 
 def main():
     print("Setting up dataset for statistics calculation...")
-    root = get_project_root()
-    train_cxrs_dir = root / "artifacts" / "embedded_train"
-    train_tabular = root / "artifacts" / "train.csv"
-
-    # Use only ToTensor to get raw pixel values in [0, 1] range
-    transform = transforms.Compose([transforms.ToTensor()])
 
     dataset = ChestXrayDataset(
-        clinical_data=train_tabular,
-        cxr_images_dir=train_cxrs_dir,
-        transform=transform,
+        clinical_data=cfg.tabular_clinical_train,
+        cxr_images_dir=cfg.cxr_train_dir,
     )
 
-    # Use a reasonable batch size and num_workers for calculation
-    # Shuffle=False is important for reproducibility if needed,
-    # though not strictly necessary for stats
     loader = DataLoader(
-        dataset, batch_size=64, shuffle=False, num_workers=4, pin_memory=True
+        dataset,
+        batch_size=cfg.batch_size,
+        shuffle=False,
+        num_workers=cfg.num_workers,
+        pin_memory=True,
     )
 
     mean, std = calculate_stats(loader, len(dataset))
