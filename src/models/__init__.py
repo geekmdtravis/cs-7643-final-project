@@ -1,1 +1,4 @@
 from .densenet_201_vanilla import DenseNet201Vanilla
+from .densenet_121_vanilla import DenseNet121Vanilla
+from .densenet_201_multimodal import DenseNet201MultiModal
+from .densenet_121_multimodal import DenseNet121MultiModal
