@@ -137,7 +137,7 @@ class Config:
         TypeError: If any of the parameters are of incorrect type.
     """
 
-    artfacts_dir: Path = PROJECT_ROOT / "artifacts"
+    artifacts: Path = PROJECT_ROOT / "artifacts"
     batch_size: int = int(BATCH_SIZE) or 16
     tabular_clinical_train: Path = PROJECT_ROOT / "artifacts" / "train.csv"
     tabular_clinical_test: Path = PROJECT_ROOT / "artifacts" / "test.csv"
@@ -173,7 +173,6 @@ class Config:
             logging.info("Environment variables loaded successfully.")
             logging.debug("Config: %s", self)
 
-    def __post_init__(self):
         # Validate logging parameters
         valid_log_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         if self.log_level.upper() not in valid_log_levels:
@@ -207,9 +206,9 @@ class Config:
             raise TypeError("num_epochs must be an integer")
         if not isinstance(self.learning_rate, float):
             raise TypeError("learning_rate must be a float")
-        if not self.artfacts_dir.exists():
+        if not self.artifacts.exists():
             logging.info("Config: Artifacts directory does not exist. Creating it.")
-            self.artfacts_dir.mkdir(parents=True, exist_ok=True)
+            self.artifacts.mkdir(parents=True, exist_ok=True)
         if not self.demo_dir.exists():
             logging.info("Config: Demo directory does not exist. Creating it.")
             self.demo_dir.mkdir(parents=True, exist_ok=True)
