@@ -7,9 +7,11 @@ import unittest
 
 from src.losses.focal_loss import FocalLoss, reweight
 
+
 def logit(p: torch.Tensor) -> torch.Tensor:
     """Convert probability to logit."""
     return torch.log(p / (1 - p))
+
 
 class TestFocalLoss(unittest.TestCase):
     def setUp(self) -> None:
@@ -48,15 +50,15 @@ class TestFocalLoss(unittest.TestCase):
         targets[3, 3] = 1  # Fourth sample, fourth class
 
         # Test with gamma=0 (should equal BCE loss)
-        focalloss = FocalLoss(weight=self.per_class_weight, gamma=0.)
+        focalloss = FocalLoss(weight=self.per_class_weight, gamma=0.0)
         focal_loss = focalloss.forward(input=inputs, target=targets)
-        
+
         # Calculate weighted BCE loss for comparison
         bce_loss = F.binary_cross_entropy_with_logits(
-            inputs, 
-            targets, 
+            inputs,
+            targets,
             weight=self.per_class_weight.unsqueeze(0).expand_as(inputs),
-            reduction='mean'
+            reduction="mean",
         )
 
         self.assertAlmostEqual(bce_loss.item(), focal_loss.item(), places=6)
@@ -73,7 +75,11 @@ class TestFocalLoss(unittest.TestCase):
         focal_loss = FocalLoss(gamma=2.0)
 
         # The ratio of hard to easy example loss should be higher with focal loss
-        bce_ratio = bce_loss(inputs[1:], targets[1:]) / bce_loss(inputs[:1], targets[:1])
-        focal_ratio = focal_loss(inputs[1:], targets[1:]) / focal_loss(inputs[:1], targets[:1])
+        bce_ratio = bce_loss(inputs[1:], targets[1:]) / bce_loss(
+            inputs[:1], targets[:1]
+        )
+        focal_ratio = focal_loss(inputs[1:], targets[1:]) / focal_loss(
+            inputs[:1], targets[:1]
+        )
 
         self.assertGreater(focal_ratio, bce_ratio)
