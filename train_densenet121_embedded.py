@@ -118,7 +118,7 @@ def main():
     BATCH_SIZE = 32
     NUM_WORKERS = 16  # Increased due to 32 threads available
     NUM_EPOCHS = 50
-    LR = 1e-4
+    LR = 1e-5
     WEIGHT_DECAY = 1e-5
 
     # Create dataset and split into train/val
@@ -151,7 +151,7 @@ def main():
     )
 
     # Initialize model, criterion, optimizer
-    model = DenseNet121Vanilla(num_classes=15).to(device)
+    model = DenseNet121Vanilla(num_classes=15, freeze_backbone=True).to(device)
     criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
