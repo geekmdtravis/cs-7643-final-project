@@ -28,4 +28,4 @@ class ViTB16Vanilla(nn.Module):
         Returns:
             torch.Tensor: Output tensor
         """
-        return self.model(x) 
+        return self.model(x)
