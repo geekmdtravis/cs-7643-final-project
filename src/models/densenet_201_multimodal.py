@@ -1,5 +1,7 @@
-"""DenseNet-201 model with multi-layer FCN classifier that combines
-image features with tabular data"""
+"""
+DenseNet-201 model with multi-layer FCN classifier that combines
+image features with tabular data
+"""
 
 import torch
 import torch.nn as nn
@@ -18,6 +20,7 @@ class DenseNet201MultiModal(nn.Module):
         dropout: float = 0.2,
         num_classes: int = 15,
         tabular_features: int = 4,
+        freeze_backbone: bool = False,
     ):
         """
         Initialize the DenseNet-201 model with a multi-layer classifier
@@ -25,34 +28,37 @@ class DenseNet201MultiModal(nn.Module):
             hidden_dims (tuple[int]): Hidden dimensions for the classifier
             dropout (float): Dropout rate for the classifier
             num_classes (int): Number of output classes. Defaults to 15
-                (14 pathologies + 1 no pathology)
             tabular_features (int): Number of tabular features to combine with image
                 features. Defaults to 4 due to four clinical features being
                 present in the dataset
+            freeze_backbone (bool): Whether to freeze the backbone model parameters
+                during training. Defaults to False. When set to True will freeze
+                all parameters in the DenseNet-201 model except for the classifier
+                head.
         """
         super(DenseNet201MultiModal, self).__init__()
         self.model = densenet201(weights=DenseNet201_Weights.IMAGENET1K_V1)
-
-        # Create a new multi-layer classifier that combines image and tabular features
-        layers = []
         image_features = self.model.classifier.in_features
-        prev_dim = image_features + tabular_features
+
+        if freeze_backbone:
+            for param in self.model.parameters():
+                param.requires_grad = False
+
+        self.model.classifier = nn.Identity()
+        layers = []
+        input_dim = image_features + tabular_features
         for hidden_dim in hidden_dims:
             layers.extend(
                 [
-                    nn.Linear(prev_dim, hidden_dim),
+                    nn.Linear(input_dim, hidden_dim),
                     nn.BatchNorm1d(hidden_dim),
                     nn.ReLU(),
                     nn.Dropout(dropout),
                 ]
             )
-            prev_dim = hidden_dim
+            input_dim = hidden_dim
 
-        # Remove the original classifier
-        self.model.classifier = nn.Identity()
-        # Add new classifier
-        layers.append(nn.Linear(prev_dim, num_classes))
-
+        layers.append(nn.Linear(input_dim, num_classes))
         self.classifier = nn.Sequential(*layers)
 
     def forward(self, x: torch.Tensor, tabular_data: torch.Tensor) -> torch.Tensor:
@@ -64,11 +70,6 @@ class DenseNet201MultiModal(nn.Module):
         Returns:
             torch.Tensor: Output tensor
         """
-        # Get image features from DenseNet
         image_features = self.model(x)
-
-        # Concatenate image features with tabular data
         combined_features = torch.cat([image_features, tabular_data], dim=1)
-
-        # Pass through the new classifier
         return self.classifier(combined_features)
