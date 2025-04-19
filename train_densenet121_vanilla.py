@@ -118,7 +118,7 @@ def main():
     BATCH_SIZE = 32
     NUM_WORKERS = 16  # Increased due to 32 threads available
     NUM_EPOCHS = 50
-    LR = 1e-4
+    LR = 1e-5
     WEIGHT_DECAY = 1e-5
 
     # Create dataset and split into train/val
