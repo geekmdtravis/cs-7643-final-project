@@ -3,3 +3,4 @@ artifacts/
 src/notebooks/*__ignore.ipynb
 logs/
 *.env
+results/
