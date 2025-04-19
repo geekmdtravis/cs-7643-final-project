@@ -18,6 +18,7 @@ class ViTL16MultiModal(nn.Module):
         dropout: float = 0.2,
         num_classes: int = 15,
         tabular_features: int = 4,
+        freeze_backbone: bool = False,
     ):
         """
         Initialize the ViT-L/16 model with a multi-layer classifier
@@ -29,9 +30,18 @@ class ViTL16MultiModal(nn.Module):
             tabular_features (int): Number of tabular features to combine with image
                 features. Defaults to 4 due to four clinical features being
                 present in the dataset
+            freeze_backbone (bool): Whether to freeze the backbone model parameters
+                during training. Defaults to False. When set to True will freeze
+                all parameters in the ViT-L/16 model except for the classifier
+                head.
         """
         super(ViTL16MultiModal, self).__init__()
         self.model = vit_l_16(weights=ViT_L_16_Weights.IMAGENET1K_V1)
+
+        # Freeze backbone parameters if specified
+        if freeze_backbone:
+            for param in self.model.parameters():
+                param.requires_grad = False
 
         # Create a new multi-layer classifier that combines image and tabular features
         layers = []
