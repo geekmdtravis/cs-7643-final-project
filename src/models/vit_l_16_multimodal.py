@@ -38,17 +38,14 @@ class ViTL16MultiModal(nn.Module):
         super(ViTL16MultiModal, self).__init__()
         self.model = vit_l_16(weights=ViT_L_16_Weights.IMAGENET1K_V1)
 
-        # Freeze backbone parameters if specified
         if freeze_backbone:
             for param in self.model.parameters():
                 param.requires_grad = False
 
-        # Create a new multi-layer classifier that combines image and tabular features
-        layers = []
-        image_features = self.model.hidden_dim  # ViT-L/16 hidden dimension
-        prev_dim = image_features + tabular_features
-
         for hidden_dim in hidden_dims:
+            layers = []
+            image_features = self.model.hidden_dim
+            prev_dim = image_features + tabular_features
             layers.extend(
                 [
                     nn.Linear(prev_dim, hidden_dim),
@@ -59,9 +56,7 @@ class ViTL16MultiModal(nn.Module):
             )
             prev_dim = hidden_dim
 
-        # Remove the original classifier
         self.model.heads = nn.Identity()
-        # Add new classifier
         layers.append(nn.Linear(prev_dim, num_classes))
 
         self.classifier = nn.Sequential(*layers)
@@ -75,11 +70,6 @@ class ViTL16MultiModal(nn.Module):
         Returns:
             torch.Tensor: Output tensor
         """
-        # Get image features from ViT
         image_features = self.model(x)
-
-        # Concatenate image features with tabular data
         combined_features = torch.cat([image_features, tabular_data], dim=1)
-
-        # Pass through the new classifier
         return self.classifier(combined_features)
