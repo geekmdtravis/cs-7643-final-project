@@ -41,8 +41,8 @@ class DenseNet201MultiModal(nn.Module):
             layers.extend(
                 [
                     nn.Linear(prev_dim, hidden_dim),
-                    nn.ReLU(),
                     nn.BatchNorm1d(hidden_dim),
+                    nn.ReLU(),
                     nn.Dropout(dropout),
                 ]
             )

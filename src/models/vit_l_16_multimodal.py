@@ -1,16 +1,14 @@
-"""
-DenseNet-121 model with multi-layer FCN classifier that combines
-image features with tabular data
-"""
+"""Vision Transformer (ViT-L/16) model with multi-layer FCN classifier that combines
+image features with tabular data"""
 
 import torch
 import torch.nn as nn
-from torchvision.models import DenseNet121_Weights, densenet121
+from torchvision.models import ViT_L_16_Weights, vit_l_16
 
 
-class DenseNet121MultiModal(nn.Module):
+class ViTL16MultiModal(nn.Module):
     """
-    Modified DenseNet-121 model with multi-layer FCN classifier that combines
+    Modified ViT-L/16 model with multi-layer FCN classifier that combines
     image features with tabular data
     """
 
@@ -22,39 +20,40 @@ class DenseNet121MultiModal(nn.Module):
         tabular_features: int = 4,
     ):
         """
-        Initialize the DenseNet-121 model with a multi-layer classifier
+        Initialize the ViT-L/16 model with a multi-layer classifier
         Args:
             hidden_dims (tuple[int]): Hidden dimensions for the classifier
             dropout (float): Dropout rate for the classifier
             num_classes (int): Number of output classes. Defaults to 15
+                (14 pathologies + 1 no pathology)
             tabular_features (int): Number of tabular features to combine with image
                 features. Defaults to 4 due to four clinical features being
                 present in the dataset
         """
-        super(DenseNet121MultiModal, self).__init__()
-        self.model = densenet121(weights=DenseNet121_Weights.IMAGENET1K_V1)
+        super(ViTL16MultiModal, self).__init__()
+        self.model = vit_l_16(weights=ViT_L_16_Weights.IMAGENET1K_V1)
 
-        # Get number of image features from the DenseNet-121 classifier
-        image_features = self.model.classifier.in_features
-
-        # Remove original classifier
-        self.model.classifier = nn.Identity()
-
-        # Build new multi-layer classifier
+        # Create a new multi-layer classifier that combines image and tabular features
         layers = []
-        input_dim = image_features + tabular_features
+        image_features = self.model.hidden_dim  # ViT-L/16 hidden dimension
+        prev_dim = image_features + tabular_features
+
         for hidden_dim in hidden_dims:
             layers.extend(
                 [
-                    nn.Linear(input_dim, hidden_dim),
+                    nn.Linear(prev_dim, hidden_dim),
                     nn.BatchNorm1d(hidden_dim),
                     nn.ReLU(),
                     nn.Dropout(dropout),
                 ]
             )
-            input_dim = hidden_dim
+            prev_dim = hidden_dim
 
-        layers.append(nn.Linear(input_dim, num_classes))
+        # Remove the original classifier
+        self.model.heads = nn.Identity()
+        # Add new classifier
+        layers.append(nn.Linear(prev_dim, num_classes))
+
         self.classifier = nn.Sequential(*layers)
 
     def forward(self, x: torch.Tensor, tabular_data: torch.Tensor) -> torch.Tensor:
@@ -66,6 +65,11 @@ class DenseNet121MultiModal(nn.Module):
         Returns:
             torch.Tensor: Output tensor
         """
+        # Get image features from ViT
         image_features = self.model(x)
+
+        # Concatenate image features with tabular data
         combined_features = torch.cat([image_features, tabular_data], dim=1)
+
+        # Pass through the new classifier
         return self.classifier(combined_features)
