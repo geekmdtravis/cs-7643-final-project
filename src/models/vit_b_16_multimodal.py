@@ -72,4 +72,4 @@ class ViTB16MultiModal(nn.Module):
         combined_features = torch.cat([image_features, tabular_data], dim=1)
 
         # Pass through the new classifier
-        return self.classifier(combined_features) 
+        return self.classifier(combined_features)
