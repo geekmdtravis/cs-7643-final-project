@@ -4,12 +4,14 @@ validation and training of the model, and plots the training curves.
 """
 
 import logging
+import os
 import time
 from pathlib import Path
 from typing import Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -134,6 +136,7 @@ def train_model(
     plot_path: str = "results/plots/training_curves.png",
     best_model_path: str = "results/models/best_model.pth",
     last_model_path: str = "results/models/last_model.pth",
+    train_val_data_path: str = "results/train_val_data.csv",
     scheduler: optim.lr_scheduler.LRScheduler | None = None,
     device: torch.device | Literal["cuda", "cpu"] = "cuda",
     num_workers: int = 32,
@@ -187,6 +190,13 @@ def train_model(
             Defaults to 0.9999. Only used if focal_loss is True.
         focal_loss_gamma (float): Gamma parameter for Focal Loss.
             Defaults to 2.0. Only used if focal_loss is True.
+        train_val_data_path (str): Path to the CSV file containing
+            the training and validation data. Defaults to
+            "data/train_val_data.csv". It includes the following columns:
+            - "train-loss"
+            - "train-auc"
+            - "val-loss"
+            - "val-auc"
 
     Returns:
         tuple[float, float, float, int]: The best validation loss, it's associated
@@ -319,6 +329,10 @@ def train_model(
             best_val_auc = val_auc
 
         if patience_counter >= patience:
+            print(
+                f"Early stopping triggered after {patience} epochs "
+                f"with no improvement in validation loss"
+            )
             logging.info(
                 f"Epoch {epoch_display}: Early stopping "
                 f"triggered after {epoch_display} epochs"
@@ -326,7 +340,7 @@ def train_model(
             break
         num_epochs_run += 1
 
-    logging.info(f"Saving final model to {last_model_path}")
+    print(f"Saving final model to {last_model_path}")
     torch.save(model.state_dict(), last_model_path)
     __plot_training_curves(
         train_losses,
@@ -336,7 +350,28 @@ def train_model(
         title_prefix="Training Curves",
         save_path=plot_path,
     )
-    logging.info("Training completed!")
+    print(f"Saving train/val data to {train_val_data_path}")
+    # Create DataFrame with training/validation metrics
+    training_data = pd.DataFrame(
+        {
+            "train_loss": train_losses,
+            "val_loss": val_losses,
+            "train_auc": train_aucs,
+            "val_auc": val_aucs,
+        }
+    )
+
+    # Ensure file extension is .csv
+    if not train_val_data_path.endswith(".csv"):
+        file_name, _ = os.path.splitext(train_val_data_path)
+        train_val_data_path = file_name + ".csv"
+
+    # Ensure directory exists
+    Path(train_val_data_path).parent.mkdir(parents=True, exist_ok=True)
+
+    # Save to CSV with headers
+    training_data.to_csv(train_val_data_path, index=False)
+    print("Training completed!")
     return (
         best_val_loss,
         best_val_auc,
