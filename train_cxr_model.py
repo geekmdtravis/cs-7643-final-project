@@ -103,7 +103,7 @@ def plot_training_curves(train_losses, val_losses, train_aucs, val_aucs):
     plt.legend()
 
     plt.tight_layout()
-    plt.savefig("results/plots/training_curves_embedded.png")
+    plt.savefig("results/plots/training_curves_cxr.png")
     plt.close()
 
 
@@ -120,7 +120,7 @@ def main():
     Path("results/plots").mkdir(parents=True, exist_ok=True)
 
     # Hyperparameters
-    BATCH_SIZE = 256
+    BATCH_SIZE = 32
     NUM_WORKERS = 16  # Increased due to 32 threads available
     NUM_EPOCHS = 50
     LR = 1e-5
@@ -159,7 +159,7 @@ def main():
     model_cfg = CXRModelConfig(
         model="densenet121",
         hidden_dims=(512, 256),
-        dropout=0.5,
+        dropout=0,
         num_classes=15,
         tabular_features=4,
         freeze_backbone=True,
@@ -208,7 +208,7 @@ def main():
         # Save best model
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            file_path = cfg.artifacts / "cxr_embedded_best.pth"
+            file_path = cfg.artifacts / "cxr_model_best.pth"
             logger.info(f"Saving best model to {file_path}")
             torch.save(model.state_dict(), file_path)
             patience_counter = 0

@@ -12,7 +12,7 @@ from sklearn.metrics import classification_report, roc_auc_score
 from tqdm import tqdm
 
 from src.data.create_dataloader import create_dataloader
-from src.models import CXRModel
+from src.models import CXRModel, CXRModelConfig
 from src.utils import Config
 
 # Define class names for classification report
@@ -44,11 +44,12 @@ def run_inference(model, test_loader, device):
     all_labels = []
 
     with torch.no_grad():
-        for images, _, labels in tqdm(test_loader, desc="Running inference"):
+        for images, tabular, labels in tqdm(test_loader, desc="Running inference"):
             images = images.to(device)
+            tabular = tabular.to(device)
             labels = labels.to(device)
 
-            outputs = model(images)
+            outputs = model(images, tabular)
             preds = torch.sigmoid(outputs)
 
             all_preds.extend(preds.cpu().numpy())
@@ -107,7 +108,15 @@ def main():
     )
 
     # Initialize model
-    model = CXRModel(num_classes=15).to(device)
+    model_cfg = CXRModelConfig(
+        model="densenet121",
+        hidden_dims=(512, 256),
+        dropout=0.5,
+        num_classes=15,
+        tabular_features=4,
+        freeze_backbone=True,
+    )
+    model = CXRModel(**model_cfg.as_dict()).to(device)
 
     # Load and evaluate best model
     logger.info("Evaluating best model...")
@@ -117,7 +126,7 @@ def main():
 
     # Load and evaluate final model
     logger.info("Evaluating final model...")
-    model.load_state_dict(torch.load(cfg.artifacts / "cxr_embedded_final.pth"))
+    model.load_state_dict(torch.load(cfg.artifacts / "cxr_model_final.pth"))
     final_preds, test_labels = run_inference(model, test_loader, device)
     final_auc_scores, final_report = evaluate_model(final_preds, test_labels)
 
