@@ -132,7 +132,7 @@ def train_model(
     device: torch.device | Literal["cuda", "cpu"] = "cuda",
     num_workers: int = 32,
     normalization_mode: NormalizationMode = "imagenet",
-) -> None:
+) -> tuple[float, float]:
     """
     Train a CXR Model.
 
@@ -173,6 +173,10 @@ def train_model(
             or "none". Defaults to "imagenet".
         patience (int): Number of epochs with no improvement after which
             training will be stopped. Defaults to 5.
+
+    Returns:
+        tuple[float, float]: The best validation loss and it's associated
+            AUC-ROC score.
     """
     model = model.to(device)
 
@@ -184,7 +188,7 @@ def train_model(
 
     if scheduler is None:
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode="min", factor=0.1, patience=patience, verbose=True
+            optimizer, mode="min", factor=0.1, patience=patience
         )
 
     if train_loader is None:
@@ -206,6 +210,7 @@ def train_model(
         )
 
     best_val_loss = float("inf")
+    best_val_auc = 0
     patience_counter = 0
     train_losses = []
     val_losses = []
@@ -262,6 +267,9 @@ def train_model(
         else:
             patience_counter += 1
 
+        if val_auc > best_val_auc:
+            best_val_auc = val_auc
+
         if patience_counter >= patience:
             logging.info(
                 f"Epoch {epoch_display}: Early stopping "
@@ -280,3 +288,4 @@ def train_model(
         save_path=plot_path,
     )
     logging.info("Training completed!")
+    return best_val_loss, best_val_auc

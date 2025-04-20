@@ -44,10 +44,9 @@ class ViTB32Vanilla(nn.Module):
                 param.requires_grad = False
 
         if not demo_mode:
-            num_features = self.model.hidden_dim
             self.model.heads = nn.Identity()
             layers = []
-            input_dim = num_features
+            input_dim = self.model.hidden_dim
             for hidden_dim in hidden_dims:
                 layers.extend(
                     [
