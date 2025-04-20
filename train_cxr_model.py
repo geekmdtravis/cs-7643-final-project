@@ -26,7 +26,7 @@ def train_one_epoch(model: CXRModel, train_loader, criterion, optimizer, device,
     all_preds = []
     all_labels = []
 
-    pbar = tqdm(train_loader, desc=f"Training Epoch {epoch}")
+    pbar = tqdm(train_loader, desc=f"T-{epoch}")
     for images, tabular, labels in pbar:
         images = images.to(device)
         tabular = tabular.to(device)
@@ -60,9 +60,8 @@ def validate(model, val_loader, criterion, device, epoch):
     all_labels = []
 
     with torch.no_grad():
-        for images, tabular, labels in tqdm(
-            val_loader, desc=f"Validation Epoch {epoch}"
-        ):
+        pbar = tqdm(val_loader, desc=f"V-{epoch}")
+        for images, tabular, labels in pbar:
             images = images.to(device)
             tabular = tabular.to(device)
             labels = labels.to(device)
@@ -73,6 +72,8 @@ def validate(model, val_loader, criterion, device, epoch):
             running_loss += loss.item()
             all_preds.extend(torch.sigmoid(outputs).detach().cpu().numpy())
             all_labels.extend(labels.cpu().numpy())
+
+            pbar.set_postfix({"loss": f"{loss.item():.4f}"})
 
     val_loss = running_loss / len(val_loader)
     val_auc = roc_auc_score(np.array(all_labels), np.array(all_preds), average="macro")
