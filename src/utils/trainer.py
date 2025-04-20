@@ -18,6 +18,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from src.data import NormalizationMode, create_dataloader
+from src.losses import FocalLoss, reweight
 from src.models import CXRModel
 from src.utils import Config
 
@@ -124,6 +125,9 @@ def train_model(
     lr: float = 1e-5,
     batch_size: int = 32,
     patience: int = 5,
+    focal_loss: bool = False,
+    focal_loss_rebal_beta: float = 0.9999,
+    focal_loss_gamma: float = 2.0,
     use_embedded_imgs: bool = False,
     train_loader: DataLoader | None = None,
     val_loader: DataLoader | None = None,
@@ -178,6 +182,11 @@ def train_model(
         use_embedded_imgs (bool): If True, use embedded images.
             If False, use raw images. Defaults to False. Of note, if you choose
             to use a custom loader, this setting does not apply.
+        focal_loss (bool): If True, use Focal Loss. Defaults to False.
+        focal_loss_rebal_beta (float): Beta parameter for Focal Loss.
+            Defaults to 0.9999. Only used if focal_loss is True.
+        focal_loss_gamma (float): Gamma parameter for Focal Loss.
+            Defaults to 2.0. Only used if focal_loss is True.
 
     Returns:
         tuple[float, float, float, int]: The best validation loss, it's associated
@@ -221,6 +230,26 @@ def train_model(
             num_workers=num_workers,
             normalization_mode=normalization_mode,
         )
+
+    if focal_loss:
+        print(
+            "Rebalancing and configuring Focal Loss "
+            f"with beta={focal_loss_rebal_beta} and "
+            f"gamma={focal_loss_gamma}"
+        )
+        train_data = train_loader.dataset
+
+        # Collect all labels into a single numpy array
+        all_labels = np.array([labels for _, _, labels in train_data])
+
+        # Sum along axis 0 to get counts for each class
+        class_counts = np.sum(all_labels, axis=0).tolist()
+
+        criterion = FocalLoss(
+            weight=reweight(class_counts, beta=focal_loss_rebal_beta),
+            gamma=focal_loss_gamma,
+        )
+        print(f"Focal Loss configured with weights: {criterion.weight}")
 
     best_val_loss = float("inf")
     best_val_auc = 0

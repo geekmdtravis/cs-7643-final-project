@@ -94,6 +94,7 @@ class Config:
             tabular CSV data.
         tabular_clinical_test (Path): Path to testing clinical
             tabular CSV data.
+        class_labels (tuple[str]): List of class labels for the dataset.
         cxr_test_dir: Path to unmodified CXR images for testing.
         cxr_train_dir: Path to unmodified CXR images for training.
         embedded_test_dir: Path to embedded CXR images for testing.
@@ -139,9 +140,23 @@ class Config:
 
     artifacts: Path = PROJECT_ROOT / "artifacts"
     batch_size: int = int(BATCH_SIZE) or 16
-    tabular_clinical_train: Path = PROJECT_ROOT / "artifacts" / "train.csv"
-    tabular_clinical_test: Path = PROJECT_ROOT / "artifacts" / "test.csv"
-    tabular_clinical_val: Path = PROJECT_ROOT / "artifacts" / "val.csv"
+    class_labels: tuple[str] = (
+        "Atelectasis",
+        "Cardiomegaly",
+        "Consolidation",
+        "Edema",
+        "Effusion",
+        "Emphysema",
+        "Fibrosis",
+        "Hernia",
+        "Infiltration",
+        "Mass",
+        "No Finding",
+        "Nodule",
+        "Pleural Thickening",
+        "Pneumonia",
+        "Pneumothorax",
+    )
     cxr_test_dir: Path = PROJECT_ROOT / "artifacts" / "cxr_test"
     cxr_train_dir: Path = PROJECT_ROOT / "artifacts" / "cxr_train"
     cxr_val_dir = PROJECT_ROOT / "artifacts" / "cxr_val"
@@ -161,6 +176,9 @@ class Config:
     optimizer: Literal["sgd", "adam"] = OPTIMIZER or "adam"
     project_root: Path = PROJECT_ROOT
     seed: int = int(SEED) or 42
+    tabular_clinical_test: Path = PROJECT_ROOT / "artifacts" / "test.csv"
+    tabular_clinical_train: Path = PROJECT_ROOT / "artifacts" / "train.csv"
+    tabular_clinical_val: Path = PROJECT_ROOT / "artifacts" / "val.csv"
 
     def __init__(self):
 
