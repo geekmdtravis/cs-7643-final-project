@@ -176,8 +176,10 @@ def train_model(
             training will be stopped. Defaults to 5.
 
     Returns:
-        tuple[float, float, float]: The best validation loss, it's associated
-            AUC-ROC score, and the average training time per epoch.
+        tuple[float, float, float, float]: The best validation loss, it's associated
+            AUC-ROC score, the average training time per epoch, the total
+            training time, and the number of epochs that were run of the total
+            possible set by the limit in the `epochs` parameter.
     """
     model = model.to(device)
 
@@ -217,7 +219,8 @@ def train_model(
     val_losses = []
     train_aucs = []
     val_aucs = []
-    train_times = []
+    epoch_train_times = []
+    num_epochs_run = 0
 
     for epoch in range(epochs):
         epoch_display = epoch + 1
@@ -234,7 +237,7 @@ def train_model(
         )
         end_time = time.time()
         train_time = end_time - start_time
-        train_times.append(train_time)
+        epoch_train_times.append(train_time)
 
         train_losses.append(train_loss)
         train_aucs.append(train_auc)
@@ -282,6 +285,7 @@ def train_model(
                 f"triggered after {epoch_display} epochs"
             )
             break
+        num_epochs_run += 1
 
     logging.info(f"Saving final model to {last_model_path}")
     torch.save(model.state_dict(), last_model_path)
@@ -294,4 +298,10 @@ def train_model(
         save_path=plot_path,
     )
     logging.info("Training completed!")
-    return best_val_loss, best_val_auc, np.mean(train_times)
+    return (
+        best_val_loss,
+        best_val_auc,
+        np.mean(epoch_train_times),
+        np.sum(epoch_train_times),
+        num_epochs_run,
+    )
