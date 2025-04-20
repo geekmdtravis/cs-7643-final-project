@@ -19,14 +19,13 @@ from src.utils import Config
 cfg = Config()
 
 
-def train_one_epoch(model: CXRModel, train_loader, criterion, optimizer, device):
+def train_one_epoch(model: CXRModel, train_loader, criterion, optimizer, device, epoch):
     """Train the model for one epoch."""
     model.train()
     running_loss = 0.0
     all_preds = []
     all_labels = []
 
-    epoch = 1
     pbar = tqdm(train_loader, desc=f"Training Epoch {epoch}")
     for images, tabular, labels in pbar:
         images = images.to(device)
@@ -45,7 +44,6 @@ def train_one_epoch(model: CXRModel, train_loader, criterion, optimizer, device)
         all_labels.extend(labels.cpu().numpy())
 
         pbar.set_postfix({"loss": f"{loss.item():.4f}"})
-        epoch += 1
 
     epoch_loss = running_loss / len(train_loader)
     epoch_auc = roc_auc_score(
@@ -54,7 +52,7 @@ def train_one_epoch(model: CXRModel, train_loader, criterion, optimizer, device)
     return epoch_loss, epoch_auc
 
 
-def validate(model, val_loader, criterion, device):
+def validate(model, val_loader, criterion, device, epoch):
     """Validate the model."""
     model.eval()
     running_loss = 0.0
@@ -62,7 +60,6 @@ def validate(model, val_loader, criterion, device):
     all_labels = []
 
     with torch.no_grad():
-        epoch = 1
         for images, tabular, labels in tqdm(
             val_loader, desc=f"Validation Epoch {epoch}"
         ):
@@ -76,7 +73,6 @@ def validate(model, val_loader, criterion, device):
             running_loss += loss.item()
             all_preds.extend(torch.sigmoid(outputs).detach().cpu().numpy())
             all_labels.extend(labels.cpu().numpy())
-            epoch += 1
 
     val_loss = running_loss / len(val_loader)
     val_auc = roc_auc_score(np.array(all_labels), np.array(all_preds), average="macro")
@@ -123,7 +119,7 @@ def main():
     Path("results/plots").mkdir(parents=True, exist_ok=True)
 
     # Hyperparameters
-    BATCH_SIZE = 32
+    BATCH_SIZE = 256
     NUM_WORKERS = 16  # Increased due to 32 threads available
     NUM_EPOCHS = 50
     LR = 1e-5
@@ -189,13 +185,13 @@ def main():
 
         # Train
         train_loss, train_auc = train_one_epoch(
-            model, train_loader, criterion, optimizer, device
+            model, train_loader, criterion, optimizer, device, epoch
         )
         train_losses.append(train_loss)
         train_aucs.append(train_auc)
 
         # Validate
-        val_loss, val_auc = validate(model, val_loader, criterion, device)
+        val_loss, val_auc = validate(model, val_loader, criterion, device, epoch)
         val_losses.append(val_loss)
         val_aucs.append(val_auc)
 
