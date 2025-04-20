@@ -138,6 +138,7 @@ class Config:
         TypeError: If any of the parameters are of incorrect type.
     """
 
+    results_dir: Path = PROJECT_ROOT / "results"
     artifacts: Path = PROJECT_ROOT / "artifacts"
     batch_size: int = int(BATCH_SIZE) or 16
     class_labels: tuple[str] = (
