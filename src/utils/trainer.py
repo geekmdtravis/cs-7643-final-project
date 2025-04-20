@@ -4,6 +4,7 @@ validation and training of the model, and plots the training curves.
 """
 
 import logging
+import time
 from pathlib import Path
 from typing import Literal
 
@@ -175,8 +176,8 @@ def train_model(
             training will be stopped. Defaults to 5.
 
     Returns:
-        tuple[float, float]: The best validation loss and it's associated
-            AUC-ROC score.
+        tuple[float, float, float]: The best validation loss, it's associated
+            AUC-ROC score, and the average training time per epoch.
     """
     model = model.to(device)
 
@@ -216,11 +217,13 @@ def train_model(
     val_losses = []
     train_aucs = []
     val_aucs = []
+    train_times = []
 
     for epoch in range(epochs):
         epoch_display = epoch + 1
         logging.info(f"Epoch {epoch_display}/{epochs}")
 
+        start_time = time.time()
         train_loss, train_auc = __train_one_epoch(
             model=model,
             loader=train_loader,
@@ -229,6 +232,9 @@ def train_model(
             device=device,
             pb_prefix=f"T-{epoch_display}",
         )
+        end_time = time.time()
+        train_time = end_time - start_time
+        train_times.append(train_time)
 
         train_losses.append(train_loss)
         train_aucs.append(train_auc)
@@ -288,4 +294,4 @@ def train_model(
         save_path=plot_path,
     )
     logging.info("Training completed!")
-    return best_val_loss, best_val_auc
+    return best_val_loss, best_val_auc, np.mean(train_times)

@@ -18,10 +18,10 @@ MODELS: list[SupportedModels] = [
 
 def train_selected_model(model: SupportedModels):
     cxr_modal = CXRModel(model=model, freeze_backbone=True, hidden_dims=())
-    loss, auc = train_model(
+    loss, auc, time = train_model(
         model=cxr_modal,
         lr=1e-3,
-        epochs=1,
+        epochs=2,
         batch_size=32,
         plot_path=f"results/plots/training_curves_{model}.png",
         best_model_path=f"results/models/best_model_{model}.pth",
@@ -30,7 +30,8 @@ def train_selected_model(model: SupportedModels):
     print(
         f"Training completed for {model}. Best:\n"
         f"- Loss: {loss:.4f}\n"
-        f"- AUC: {auc:.4f}"
+        f"- AUC: {auc:.4f}\n"
+        f"- Time: {time:.2f} seconds (avg, per epoch)\n"
     )
 
 
