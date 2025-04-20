@@ -176,7 +176,7 @@ def train_model(
             training will be stopped. Defaults to 5.
 
     Returns:
-        tuple[float, float, float, float]: The best validation loss, it's associated
+        tuple[float, float, float, int]: The best validation loss, it's associated
             AUC-ROC score, the average training time per epoch, the total
             training time, and the number of epochs that were run of the total
             possible set by the limit in the `epochs` parameter.
@@ -220,7 +220,7 @@ def train_model(
     train_aucs = []
     val_aucs = []
     epoch_train_times = []
-    num_epochs_run = 0
+    num_epochs_run: int = 0
 
     for epoch in range(epochs):
         epoch_display = epoch + 1
