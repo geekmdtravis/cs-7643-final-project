@@ -42,10 +42,10 @@ class ViTB32MultiModal(nn.Module):
             for param in self.model.parameters():
                 param.requires_grad = False
 
+        image_features = self.model.hidden_dim
+        prev_dim = image_features + tabular_features
+        layers = []
         for hidden_dim in hidden_dims:
-            layers = []
-            image_features = self.model.hidden_dim
-            prev_dim = image_features + tabular_features
             layers.extend(
                 [
                     nn.Linear(prev_dim, hidden_dim),

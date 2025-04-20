@@ -4,6 +4,7 @@ validation and training of the model, and plots the training curves.
 """
 
 import logging
+import time
 from pathlib import Path
 from typing import Literal
 
@@ -132,7 +133,7 @@ def train_model(
     device: torch.device | Literal["cuda", "cpu"] = "cuda",
     num_workers: int = 32,
     normalization_mode: NormalizationMode = "imagenet",
-) -> None:
+) -> tuple[float, float]:
     """
     Train a CXR Model.
 
@@ -173,6 +174,12 @@ def train_model(
             or "none". Defaults to "imagenet".
         patience (int): Number of epochs with no improvement after which
             training will be stopped. Defaults to 5.
+
+    Returns:
+        tuple[float, float, float, int]: The best validation loss, it's associated
+            AUC-ROC score, the average training time per epoch, the total
+            training time, and the number of epochs that were run of the total
+            possible set by the limit in the `epochs` parameter.
     """
     model = model.to(device)
 
@@ -184,7 +191,7 @@ def train_model(
 
     if scheduler is None:
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode="min", factor=0.1, patience=patience, verbose=True
+            optimizer, mode="min", factor=0.1, patience=patience
         )
 
     if train_loader is None:
@@ -206,16 +213,20 @@ def train_model(
         )
 
     best_val_loss = float("inf")
+    best_val_auc = 0
     patience_counter = 0
     train_losses = []
     val_losses = []
     train_aucs = []
     val_aucs = []
+    epoch_train_times = []
+    num_epochs_run: int = 0
 
     for epoch in range(epochs):
         epoch_display = epoch + 1
         logging.info(f"Epoch {epoch_display}/{epochs}")
 
+        start_time = time.time()
         train_loss, train_auc = __train_one_epoch(
             model=model,
             loader=train_loader,
@@ -224,6 +235,9 @@ def train_model(
             device=device,
             pb_prefix=f"T-{epoch_display}",
         )
+        end_time = time.time()
+        train_time = end_time - start_time
+        epoch_train_times.append(train_time)
 
         train_losses.append(train_loss)
         train_aucs.append(train_auc)
@@ -262,12 +276,16 @@ def train_model(
         else:
             patience_counter += 1
 
+        if val_auc > best_val_auc:
+            best_val_auc = val_auc
+
         if patience_counter >= patience:
             logging.info(
                 f"Epoch {epoch_display}: Early stopping "
                 f"triggered after {epoch_display} epochs"
             )
             break
+        num_epochs_run += 1
 
     logging.info(f"Saving final model to {last_model_path}")
     torch.save(model.state_dict(), last_model_path)
@@ -280,3 +298,10 @@ def train_model(
         save_path=plot_path,
     )
     logging.info("Training completed!")
+    return (
+        best_val_loss,
+        best_val_auc,
+        np.mean(epoch_train_times),
+        np.sum(epoch_train_times),
+        num_epochs_run,
+    )
