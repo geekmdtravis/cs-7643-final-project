@@ -124,6 +124,7 @@ def train_model(
     lr: float = 1e-5,
     batch_size: int = 32,
     patience: int = 5,
+    use_embedded_imgs: bool = False,
     train_loader: DataLoader | None = None,
     val_loader: DataLoader | None = None,
     plot_path: str = "results/plots/training_curves.png",
@@ -174,6 +175,9 @@ def train_model(
             or "none". Defaults to "imagenet".
         patience (int): Number of epochs with no improvement after which
             training will be stopped. Defaults to 5.
+        use_embedded_imgs (bool): If True, use embedded images.
+            If False, use raw images. Defaults to False. Of note, if you choose
+            to use a custom loader, this setting does not apply.
 
     Returns:
         tuple[float, float, float, int]: The best validation loss, it's associated
@@ -195,18 +199,24 @@ def train_model(
         )
 
     if train_loader is None:
+        cxr_train_img_dir = (
+            cfg.embedded_train_dir if use_embedded_imgs else cfg.cxr_train_dir
+        )
         train_loader = create_dataloader(
             clinical_data=cfg.tabular_clinical_train,
-            cxr_images_dir=cfg.embedded_train_dir,
+            cxr_images_dir=cxr_train_img_dir,
             batch_size=batch_size,
             num_workers=num_workers,
             normalization_mode=normalization_mode,
         )
 
     if val_loader is None:
+        cxr_valid_img_dir = (
+            cfg.embedded_val_dir if use_embedded_imgs else cfg.cxr_val_dir
+        )
         val_loader = create_dataloader(
             clinical_data=cfg.tabular_clinical_val,
-            cxr_images_dir=cfg.embedded_val_dir,
+            cxr_images_dir=cxr_valid_img_dir,
             batch_size=batch_size,
             num_workers=num_workers,
             normalization_mode=normalization_mode,
