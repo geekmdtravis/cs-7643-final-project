@@ -29,7 +29,7 @@ def __train_one_epoch(
     criterion: nn.Module,
     optimizer: optim.Optimizer,
     device: torch.device | Literal["cuda", "cpu"],
-    epoch: int,
+    pb_prefix: str,
 ) -> None:
     """Train the model for one epoch."""
     model.train()
@@ -37,7 +37,7 @@ def __train_one_epoch(
     all_preds = []
     all_labels = []
 
-    pbar = tqdm(loader, desc=f"T-{epoch}")
+    pbar = tqdm(loader, desc=pb_prefix)
     for images, tabular, labels in pbar:
         images: nn.Module = images.to(device)
         tabular: nn.Module = tabular.to(device)
@@ -222,7 +222,7 @@ def train_model(
             criterion=criterion,
             optimizer=optimizer,
             device=device,
-            epoch=epoch_display,
+            pb_prefix=f"T-{epoch_display}",
         )
 
         train_losses.append(train_loss)
@@ -234,7 +234,7 @@ def train_model(
             criterion=criterion,
             optimizer=optimizer,
             device=device,
-            epoch=epoch_display,
+            pb_prefix=f"V-{epoch_display}",
         )
         val_losses.append(val_loss)
         val_aucs.append(val_auc)
