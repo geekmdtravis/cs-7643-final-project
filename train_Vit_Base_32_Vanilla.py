@@ -11,6 +11,7 @@ import torch.optim as optim
 from sklearn.metrics import roc_auc_score
 from torch.utils.data import random_split
 from tqdm import tqdm
+from src.losses import FocalLoss, reweight
 
 from src.data.create_dataloader import create_dataloader
 #from src.models.densenet_121_vanilla import DenseNet121Vanilla
@@ -121,7 +122,7 @@ def main():
     # Hyperparameters
     BATCH_SIZE = 32
     NUM_WORKERS = 16  # Increased due to 32 threads available
-    NUM_EPOCHS = 50
+    NUM_EPOCHS = 1 #50
     LR = 1e-4
     WEIGHT_DECAY = 1e-5
 
@@ -154,9 +155,40 @@ def main():
         pin_memory=True,
     )
 
+    # Class names for the 15 conditions
+    CLASS_NAMES = [
+        "Atelectasis",
+        "Cardiomegaly",
+        "Consolidation",
+        "Edema",
+        "Effusion",
+        "Emphysema",
+        "Fibrosis",
+        "Hernia",
+        "Infiltration",
+        "Mass",
+        "No Finding",
+        "Nodule",
+        "Pleural Thickening",
+        "Pneumonia",
+        "Pneumothorax",
+    ]
+    # Calculate class weights using actual distribution
+    print("\nCalculating class weights...")
+    class_counts = []
+    for i in range(15):
+        count = sum(1 for _, _, labels in train_dataset if labels[i] == 1)
+        class_counts.append(count)
+        print(f"{CLASS_NAMES[i]}: {count} samples")
+
+    class_weights = reweight(class_counts, beta=0.9999)
+    print("\nClass weights:")
+    for i, weight in enumerate(class_weights):
+        print(f"{CLASS_NAMES[i]}: {weight:.4f}")
+
     # Initialize model, criterion, optimizer
     model = ViT_Base.ViTB32Vanilla(num_classes=15).to(device)
-    criterion = nn.BCEWithLogitsLoss()
+    criterion = FocalLoss(weight=class_weights, gamma=2.0) #nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode="min", factor=0.1, patience=5, verbose=True
