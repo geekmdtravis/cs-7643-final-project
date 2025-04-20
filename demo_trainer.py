@@ -23,6 +23,7 @@ def train_selected_model(model: SupportedModels):
         lr=1e-3,
         epochs=2,
         batch_size=32,
+        focal_loss=True,
         plot_path=f"results/plots/training_curves_{model}.png",
         best_model_path=f"results/models/best_model_{model}.pth",
         last_model_path=f"results/models/last_model_{model}.pth",
