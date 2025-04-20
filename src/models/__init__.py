@@ -1,3 +1,4 @@
+from .cxr_model import CXRModel, CXRModelConfig
 from .densenet_121_multimodal import DenseNet121MultiModal
 from .densenet_121_vanilla import DenseNet121Vanilla
 from .densenet_201_multimodal import DenseNet201MultiModal
