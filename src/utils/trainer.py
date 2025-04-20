@@ -16,12 +16,16 @@ from sklearn.metrics import roc_auc_score
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from src.data import NormalizationMode, create_dataloader
 from src.models import CXRModel
+from src.utils import Config
+
+cfg = Config()
 
 
 def __train_one_epoch(
     model: CXRModel,
-    train_loader: DataLoader,
+    loader: DataLoader,
     criterion: nn.Module,
     optimizer: optim.Optimizer,
     device: torch.device | Literal["cuda", "cpu"],
@@ -33,7 +37,7 @@ def __train_one_epoch(
     all_preds = []
     all_labels = []
 
-    pbar = tqdm(train_loader, desc=f"T-{epoch}")
+    pbar = tqdm(loader, desc=f"T-{epoch}")
     for images, tabular, labels in pbar:
         images: nn.Module = images.to(device)
         tabular: nn.Module = tabular.to(device)
@@ -52,7 +56,7 @@ def __train_one_epoch(
 
         pbar.set_postfix({"loss": f"{loss.item():.4f}"})
 
-    epoch_loss = running_loss / len(train_loader)
+    epoch_loss = running_loss / len(loader)
     epoch_auc = roc_auc_score(
         np.array(all_labels), np.array(all_preds), average="macro"
     )
@@ -113,18 +117,21 @@ def __plot_training_curves(
 
 def train_model(
     model: CXRModel,
-    train_loader: DataLoader,
-    val_loader: DataLoader,
+    criterion: nn.Module | None = None,
+    optimizer: optim.Optimizer | None = None,
+    epochs: int = 50,
+    lr: float = 1e-5,
+    batch_size: int = 32,
+    patience: int = 5,
+    train_loader: DataLoader | None = None,
+    val_loader: DataLoader | None = None,
     plot_path: str = "results/plots/training_curves.png",
     best_model_path: str = "results/models/best_model.pth",
     last_model_path: str = "results/models/last_model.pth",
-    criterion: nn.Module | None = None,
-    optimizer: optim.Optimizer | None = None,
     scheduler: optim.lr_scheduler.LRScheduler | None = None,
     device: torch.device | Literal["cuda", "cpu"] = "cuda",
-    epochs: int = 50,
-    lr: float = 1e-5,
-    patience: int = 5,
+    num_workers: int = 32,
+    normalization_mode: NormalizationMode = "imagenet",
 ) -> None:
     """
     Train a CXR Model.
@@ -132,7 +139,13 @@ def train_model(
     Args:
         model (CXRModel): The model to train.
         train_loader (DataLoader): The DataLoader for training dataset.
+            If None, a DataLoader will be created using the
+            clinical data and CXR images directory.
+            Defaults to None.
         val_loader (DataLoader): The DataLoader for the validation dataset.
+            If None, a DataLoader will be created using the
+            clinical data and CXR images directory.
+            Defaults to None.
         plot_path (str): Path to save the training curves plot.
             If the directory does not exist, it will be created.
             Defaults to "results/plots/training_curves.png".
@@ -152,9 +165,16 @@ def train_model(
             If None, defaults to "cuda".
         epochs (int): Number of epochs to train. Defaults to 50.
         lr (float): Learning rate for the optimizer. Defaults to 1e-5.
+        batch_size (int): Batch size for the DataLoader. Defaults to 32.
+        num_workers (int): Number of workers for the DataLoader.
+            Defaults to 32.
+        normalization_mode (NormalizationMode): Normalization mode for
+            the images. Options are "imagenet", "dataset_specific",
+            or "none". Defaults to "imagenet".
         patience (int): Number of epochs with no improvement after which
             training will be stopped. Defaults to 5.
     """
+    model = model.to(device)
 
     if criterion is None:
         criterion = nn.BCEWithLogitsLoss()
@@ -165,6 +185,24 @@ def train_model(
     if scheduler is None:
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, mode="min", factor=0.1, patience=patience, verbose=True
+        )
+
+    if train_loader is None:
+        train_loader = create_dataloader(
+            clinical_data=cfg.tabular_clinical_train,
+            cxr_images_dir=cfg.embedded_train_dir,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            normalization_mode=normalization_mode,
+        )
+
+    if val_loader is None:
+        val_loader = create_dataloader(
+            clinical_data=cfg.tabular_clinical_val,
+            cxr_images_dir=cfg.embedded_val_dir,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            normalization_mode=normalization_mode,
         )
 
     best_val_loss = float("inf")
@@ -209,6 +247,10 @@ def train_model(
         )
 
         scheduler.step(val_loss)
+
+        # Ensure directories exist before saving
+        Path(best_model_path).parent.mkdir(parents=True, exist_ok=True)
+        Path(last_model_path).parent.mkdir(parents=True, exist_ok=True)
 
         if val_loss < best_val_loss:
             best_val_loss = val_loss

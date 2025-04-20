@@ -141,12 +141,15 @@ class Config:
     batch_size: int = int(BATCH_SIZE) or 16
     tabular_clinical_train: Path = PROJECT_ROOT / "artifacts" / "train.csv"
     tabular_clinical_test: Path = PROJECT_ROOT / "artifacts" / "test.csv"
+    tabular_clinical_val: Path = PROJECT_ROOT / "artifacts" / "val.csv"
     cxr_test_dir: Path = PROJECT_ROOT / "artifacts" / "cxr_test"
     cxr_train_dir: Path = PROJECT_ROOT / "artifacts" / "cxr_train"
+    cxr_val_dir = PROJECT_ROOT / "artifacts" / "cxr_val"
     demo_dir: Path = PROJECT_ROOT / "artifacts" / "demo"
     device: Literal["cuda", "cpu"] = DEVICE or "cuda"
     embedded_test_dir: Path = PROJECT_ROOT / "artifacts" / "embedded_test"
     embedded_train_dir: Path = PROJECT_ROOT / "artifacts" / "embedded_train"
+    embedded_val_dir: Path = PROJECT_ROOT / "artifacts" / "embedded_val"
     learning_rate: float = float(LEARNING_RATE) or 0.001
     log_file: Path = PROJECT_ROOT / "logs" / LOG_FILE
     log_format: str = (
@@ -226,6 +229,12 @@ class Config:
         if not self.cxr_test_dir.exists():
             logging.info("Config: CXR test directory does not exist. Creating it.")
             self.cxr_test_dir.mkdir(parents=True, exist_ok=True)
+        if not self.cxr_val_dir.exists():
+            logging.info("Config: CXR val directory does not exist. Creating it.")
+            self.cxr_val_dir.mkdir(parents=True, exist_ok=True)
+        if not self.embedded_val_dir.exists():
+            logging.info("Config: Embedded val directory does not exist. Creating it.")
+            self.embedded_val_dir.mkdir(parents=True, exist_ok=True)
 
     def __repr__(self):
         return (

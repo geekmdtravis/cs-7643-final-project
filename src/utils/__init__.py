@@ -13,3 +13,4 @@ from .preprocessing import (
     train_test_split,
 )
 from .sytem_info import get_system_info
+from .trainer import train_model
