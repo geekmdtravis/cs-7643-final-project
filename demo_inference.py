@@ -4,9 +4,9 @@ from src.utils import Config, evaluate_model, print_evaluation_results, run_infe
 
 cfg = Config()
 
-model = CXRModel(model="vit_l_16_mm", freeze_backbone=True, hidden_dims=())
+model = CXRModel(model="vit_l_16", freeze_backbone=True, hidden_dims=())
 
-path = "results/models/best_model_vit_l_16_mm.pth"
+path = "results/models/best_model_vit_l_16.pth"
 loader = create_dataloader(
     clinical_data=cfg.tabular_clinical_test,
     cxr_images_dir=cfg.cxr_test_dir,
@@ -23,7 +23,5 @@ preds, labels = run_inference(
 
 
 auc_scores, report = evaluate_model(preds, labels)
-print(f"AUC scores: {auc_scores}")
-print(f"Classification report:\n{report}")
 
 print_evaluation_results(auc_scores, report)
