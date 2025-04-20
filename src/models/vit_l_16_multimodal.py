@@ -1,16 +1,14 @@
-"""
-DenseNet-201 model with multi-layer FCN classifier that combines
-image features with tabular data
-"""
+"""Vision Transformer (ViT-L/16) model with multi-layer FCN classifier that combines
+image features with tabular data"""
 
 import torch
 import torch.nn as nn
-from torchvision.models import DenseNet201_Weights, densenet201
+from torchvision.models import ViT_L_16_Weights, vit_l_16
 
 
-class DenseNet201MultiModal(nn.Module):
+class ViTL16MultiModal(nn.Module):
     """
-    Modified DenseNet-201 model with multi-layer FCN classifier that combines
+    Modified ViT-L/16 model with multi-layer FCN classifier that combines
     image features with tabular data
     """
 
@@ -23,42 +21,44 @@ class DenseNet201MultiModal(nn.Module):
         freeze_backbone: bool = False,
     ):
         """
-        Initialize the DenseNet-201 model with a multi-layer classifier
+        Initialize the ViT-L/16 model with a multi-layer classifier
         Args:
             hidden_dims (tuple[int]): Hidden dimensions for the classifier
             dropout (float): Dropout rate for the classifier
             num_classes (int): Number of output classes. Defaults to 15
+                (14 pathologies + 1 no pathology)
             tabular_features (int): Number of tabular features to combine with image
                 features. Defaults to 4 due to four clinical features being
                 present in the dataset
             freeze_backbone (bool): Whether to freeze the backbone model parameters
                 during training. Defaults to False. When set to True will freeze
-                all parameters in the DenseNet-201 model except for the classifier
+                all parameters in the ViT-L/16 model except for the classifier
                 head.
         """
-        super(DenseNet201MultiModal, self).__init__()
-        self.model = densenet201(weights=DenseNet201_Weights.IMAGENET1K_V1)
-        image_features = self.model.classifier.in_features
+        super(ViTL16MultiModal, self).__init__()
+        self.model = vit_l_16(weights=ViT_L_16_Weights.IMAGENET1K_V1)
 
         if freeze_backbone:
             for param in self.model.parameters():
                 param.requires_grad = False
 
-        self.model.classifier = nn.Identity()
         layers = []
-        input_dim = image_features + tabular_features
+        image_features = self.model.hidden_dim
+        prev_dim = image_features + tabular_features
         for hidden_dim in hidden_dims:
             layers.extend(
                 [
-                    nn.Linear(input_dim, hidden_dim),
+                    nn.Linear(prev_dim, hidden_dim),
                     nn.BatchNorm1d(hidden_dim),
                     nn.ReLU(),
                     nn.Dropout(dropout),
                 ]
             )
-            input_dim = hidden_dim
+            prev_dim = hidden_dim
 
-        layers.append(nn.Linear(input_dim, num_classes))
+        self.model.heads = nn.Identity()
+        layers.append(nn.Linear(prev_dim, num_classes))
+
         self.classifier = nn.Sequential(*layers)
 
     def forward(self, x: torch.Tensor, tabular_data: torch.Tensor) -> torch.Tensor:

@@ -1,16 +1,16 @@
 """
-DenseNet-201 model with multi-layer FCN classifier that combines
+DenseNet-121 model with multi-layer FCN classifier that combines
 image features with tabular data
 """
 
 import torch
 import torch.nn as nn
-from torchvision.models import DenseNet201_Weights, densenet201
+from torchvision.models import DenseNet121_Weights, densenet121
 
 
-class DenseNet201MultiModal(nn.Module):
+class DenseNet121MultiModal(nn.Module):
     """
-    Modified DenseNet-201 model with multi-layer FCN classifier that combines
+    Modified DenseNet-121 model with multi-layer FCN classifier that combines
     image features with tabular data
     """
 
@@ -23,7 +23,7 @@ class DenseNet201MultiModal(nn.Module):
         freeze_backbone: bool = False,
     ):
         """
-        Initialize the DenseNet-201 model with a multi-layer classifier
+        Initialize the DenseNet-121 model with a multi-layer classifier
         Args:
             hidden_dims (tuple[int]): Hidden dimensions for the classifier
             dropout (float): Dropout rate for the classifier
@@ -33,11 +33,11 @@ class DenseNet201MultiModal(nn.Module):
                 present in the dataset
             freeze_backbone (bool): Whether to freeze the backbone model parameters
                 during training. Defaults to False. When set to True will freeze
-                all parameters in the DenseNet-201 model except for the classifier
+                all parameters in the DenseNet-121 model except for the classifier
                 head.
         """
-        super(DenseNet201MultiModal, self).__init__()
-        self.model = densenet201(weights=DenseNet201_Weights.IMAGENET1K_V1)
+        super(DenseNet121MultiModal, self).__init__()
+        self.model = densenet121(weights=DenseNet121_Weights.IMAGENET1K_V1)
         image_features = self.model.classifier.in_features
 
         if freeze_backbone:
@@ -46,19 +46,19 @@ class DenseNet201MultiModal(nn.Module):
 
         self.model.classifier = nn.Identity()
         layers = []
-        input_dim = image_features + tabular_features
+        prev_dim = image_features + tabular_features
         for hidden_dim in hidden_dims:
             layers.extend(
                 [
-                    nn.Linear(input_dim, hidden_dim),
+                    nn.Linear(prev_dim, hidden_dim),
                     nn.BatchNorm1d(hidden_dim),
                     nn.ReLU(),
                     nn.Dropout(dropout),
                 ]
             )
-            input_dim = hidden_dim
+            prev_dim = hidden_dim
 
-        layers.append(nn.Linear(input_dim, num_classes))
+        layers.append(nn.Linear(prev_dim, num_classes))
         self.classifier = nn.Sequential(*layers)
 
     def forward(self, x: torch.Tensor, tabular_data: torch.Tensor) -> torch.Tensor:
