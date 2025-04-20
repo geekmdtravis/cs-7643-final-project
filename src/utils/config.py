@@ -182,30 +182,11 @@ class Config:
             raise TypeError("log_format must be a string")
 
         # Validate other parameters
-        if self.num_workers < 1:
-            raise ValueError("num_workers must be at least 1")
-        if self.batch_size < 1:
-            raise ValueError("batch_size must be at least 1")
-        if self.num_epochs < 1:
-            raise ValueError("num_epochs must be at least 1")
-        if self.learning_rate <= 0:
-            raise ValueError("learning_rate must be greater than 0")
-        if self.optimizer not in ["adam", "sgd"]:
-            raise ValueError("optimizer must be either 'adam' or 'sgd'")
+
         if self.device not in ["cuda", "cpu"]:
             raise ValueError("device must be either 'cuda' or 'cpu'")
         if not isinstance(self.device, str):
             raise TypeError("device must be a 'cpu' or 'cuda'")
-        if not isinstance(self.optimizer, str):
-            raise TypeError("optimizer must be 'sgd' or 'adam'")
-        if not isinstance(self.num_workers, int):
-            raise TypeError("num_workers must be an integer")
-        if not isinstance(self.batch_size, int):
-            raise TypeError("batch_size must be an integer")
-        if not isinstance(self.num_epochs, int):
-            raise TypeError("num_epochs must be an integer")
-        if not isinstance(self.learning_rate, float):
-            raise TypeError("learning_rate must be a float")
         if not self.artifacts.exists():
             logging.info("Config: Artifacts directory does not exist. Creating it.")
             self.artifacts.mkdir(parents=True, exist_ok=True)
