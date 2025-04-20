@@ -20,6 +20,7 @@ class DenseNet121MultiModal(nn.Module):
         dropout: float = 0.2,
         num_classes: int = 15,
         tabular_features: int = 4,
+        freeze_backbone: bool = False,
     ):
         """
         Initialize the DenseNet-121 model with a multi-layer classifier
@@ -30,31 +31,34 @@ class DenseNet121MultiModal(nn.Module):
             tabular_features (int): Number of tabular features to combine with image
                 features. Defaults to 4 due to four clinical features being
                 present in the dataset
+            freeze_backbone (bool): Whether to freeze the backbone model parameters
+                during training. Defaults to False. When set to True will freeze
+                all parameters in the DenseNet-121 model except for the classifier
+                head.
         """
         super(DenseNet121MultiModal, self).__init__()
         self.model = densenet121(weights=DenseNet121_Weights.IMAGENET1K_V1)
-
-        # Get number of image features from the DenseNet-121 classifier
         image_features = self.model.classifier.in_features
 
-        # Remove original classifier
-        self.model.classifier = nn.Identity()
+        if freeze_backbone:
+            for param in self.model.parameters():
+                param.requires_grad = False
 
-        # Build new multi-layer classifier
+        self.model.classifier = nn.Identity()
         layers = []
-        input_dim = image_features + tabular_features
+        prev_dim = image_features + tabular_features
         for hidden_dim in hidden_dims:
             layers.extend(
                 [
-                    nn.Linear(input_dim, hidden_dim),
+                    nn.Linear(prev_dim, hidden_dim),
                     nn.BatchNorm1d(hidden_dim),
                     nn.ReLU(),
                     nn.Dropout(dropout),
                 ]
             )
-            input_dim = hidden_dim
+            prev_dim = hidden_dim
 
-        layers.append(nn.Linear(input_dim, num_classes))
+        layers.append(nn.Linear(prev_dim, num_classes))
         self.classifier = nn.Sequential(*layers)
 
     def forward(self, x: torch.Tensor, tabular_data: torch.Tensor) -> torch.Tensor:
