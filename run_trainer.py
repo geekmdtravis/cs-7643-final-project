@@ -21,9 +21,9 @@ def train_selected_model(model: SupportedModels):
     loss, auc, epoch_time, total_time, epoch_count = train_model(
         model=cxr_modal,
         lr=1e-3,
-        epochs=2,
-        batch_size=32,
-        focal_loss=False,
+        epochs=25,
+        batch_size=128,
+        focal_loss=True,
         plot_path=f"results/plots/training_curves_{model}.png",
         best_model_path=f"results/models/best_model_{model}.pth",
         last_model_path=f"results/models/last_model_{model}.pth",

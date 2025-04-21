@@ -67,6 +67,42 @@ def __train_one_epoch(
     return epoch_loss, epoch_auc
 
 
+def __validate_one_epoch(
+    model: CXRModel,
+    loader: DataLoader,
+    criterion: nn.Module,
+    device: torch.device | Literal["cuda", "cpu"],
+    pb_prefix: str,
+) -> tuple[float, float]:
+    """Validate the model without updating weights."""
+    model.eval()  # Set model to evaluation mode
+    running_loss = 0.0
+    all_preds = []
+    all_labels = []
+
+    with torch.no_grad():  # No gradients needed
+        pbar = tqdm(loader, desc=pb_prefix)
+        for images, tabular, labels in pbar:
+            images: torch.Tensor = images.to(device)
+            tabular: torch.Tensor = tabular.to(device)
+            labels: torch.Tensor = labels.to(device)
+
+            outputs = model(images, tabular)
+            loss = criterion(outputs, labels)
+
+            running_loss += loss.item()
+            all_preds.extend(torch.sigmoid(outputs).cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
+
+            pbar.set_postfix({"val_loss": f"{loss.item():.4f}"})
+
+    epoch_loss = running_loss / len(loader)
+    epoch_auc = roc_auc_score(
+        np.array(all_labels), np.array(all_preds), average="macro"
+    )
+    return epoch_loss, epoch_auc
+
+
 def __plot_training_curves(
     train_losses: torch.Tensor,
     val_losses: torch.Tensor,
@@ -291,11 +327,10 @@ def train_model(
         train_losses.append(train_loss)
         train_aucs.append(train_auc)
 
-        val_loss, val_auc = __train_one_epoch(
+        val_loss, val_auc = __validate_one_epoch(
             model=model,
             loader=val_loader,
             criterion=criterion,
-            optimizer=optimizer,
             device=device,
             pb_prefix=f"V-{epoch_display}",
         )
