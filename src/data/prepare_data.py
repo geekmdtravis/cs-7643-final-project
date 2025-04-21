@@ -180,10 +180,19 @@ def copy_cached_imgs_to_artifacts(
 
 
 def create_save_embedded_images(
-    images_dir: Path, clinical_data: Path, dest_dir: Path
+    images_dir: Path, clinical_data: Path, dest_dir: Path, matrix_size: int = 16
 ) -> None:
     """
     Copy the embedded images to the artifacts directory.
+
+    Args:
+        images_dir (Path): Directory containing the original images.
+        clinical_data (Path): Path to the clinical data CSV file.
+        dest_dir (Path): Directory where the embedded images will be saved.
+        matrix_size (int): Size of the matrix for embedding clinical data.
+
+    Returns:
+        None
     """
     if not dest_dir.exists():
         error = f"create_save_embedded_images: dest_dir={dest_dir} does not exist"
@@ -216,7 +225,7 @@ def create_save_embedded_images(
             embedded_img = embed_clinical_data_into_image(
                 image_batch=torch.stack([image_tensor]),
                 tabular_batch=torch.stack([tabular_batch]),
-                matrix_size=16,
+                matrix_size=matrix_size,
             )
             save_path = dest_dir / image_name
             embedded_image = embedded_img.cpu().detach()[0]
@@ -296,5 +305,32 @@ def prepare_data(test_size: float, val_size: float, seed: int = 42) -> None:
         images_dir=cfg.cxr_test_dir,
         clinical_data=cfg.tabular_clinical_test,
         dest_dir=cfg.embedded_test_dir,
+    )
+    logging.info(
+        "process_data: Copying 32px embedded train images to artifacts directory."
+    )
+    create_save_embedded_images(
+        images_dir=cfg.cxr_train_dir,
+        clinical_data=cfg.tabular_clinical_train,
+        dest_dir=cfg.embedded32_train_dir,
+        matrix_size=32,
+    )
+    logging.info(
+        "process_data: Copying 32px embedded validation images to artifacts directory."
+    )
+    create_save_embedded_images(
+        images_dir=cfg.cxr_val_dir,
+        clinical_data=cfg.tabular_clinical_val,
+        dest_dir=cfg.embedded32_val_dir,
+        matrix_size=32,
+    )
+    logging.info(
+        "process_data: Copying 32px embedded test images to artifacts directory."
+    )
+    create_save_embedded_images(
+        images_dir=cfg.cxr_test_dir,
+        clinical_data=cfg.tabular_clinical_test,
+        dest_dir=cfg.embedded32_test_dir,
+        matrix_size=32,
     )
     logging.info("process_data: Data processing complete.")
