@@ -148,6 +148,9 @@ class Config:
     embedded_test_dir: Path = PROJECT_ROOT / "artifacts" / "embedded_test"
     embedded_train_dir: Path = PROJECT_ROOT / "artifacts" / "embedded_train"
     embedded_val_dir: Path = PROJECT_ROOT / "artifacts" / "embedded_val"
+    embedded32_test_dir: Path = PROJECT_ROOT / "artifacts" / "embedded32_test"
+    embedded32_train_dir: Path = PROJECT_ROOT / "artifacts" / "embedded32_train"
+    embedded32_val_dir: Path = PROJECT_ROOT / "artifacts" / "embedded32_val"
     log_file: Path = PROJECT_ROOT / "logs" / LOG_FILE
     log_format: str = (
         LOG_FORMAT or "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -193,6 +196,21 @@ class Config:
         if not self.demo_dir.exists():
             logging.info("Config: Demo directory does not exist. Creating it.")
             self.demo_dir.mkdir(parents=True, exist_ok=True)
+        if not self.embedded32_test_dir.exists():
+            logging.info(
+                "Config: Embedded32 test directory does not exist. Creating it."
+            )
+            self.embedded32_test_dir.mkdir(parents=True, exist_ok=True)
+        if not self.embedded32_train_dir.exists():
+            logging.info(
+                "Config: Embedded32 train directory does not exist. Creating it."
+            )
+            self.embedded32_train_dir.mkdir(parents=True, exist_ok=True)
+        if not self.embedded32_val_dir.exists():
+            logging.info(
+                "Config: Embedded32 val directory does not exist. Creating it."
+            )
+            self.embedded32_val_dir.mkdir(parents=True, exist_ok=True)
         if not self.embedded_train_dir.exists():
             logging.info(
                 "Config: Embedded train directory does not exist. Creating it."
