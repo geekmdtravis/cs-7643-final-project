@@ -1,6 +1,6 @@
 from src.models import CXRModelConfig
 from src.models.cxr_model import SupportedModels
-from src.utils import run_inference, train_model
+from src.utils import train_model
 
 MODELS: list[SupportedModels] = [
     "densenet121",
@@ -23,7 +23,9 @@ def run_trainer(model: SupportedModels):
         lr=1e-4,
         epochs=1,
         batch_size=128,
-        focal_loss=False,
+        focal_loss=True,
+        focal_loss_rebal_beta=0.999999,
+        focal_loss_gamma=5,
         plot_path=f"results/plots/training_curves_{model}.png",
         best_model_path=f"results/models/best_model_{model}.pth",
         last_model_path=f"results/models/last_model_{model}.pth",
@@ -37,7 +39,6 @@ def run_trainer(model: SupportedModels):
         f"- Total Time: {total_time:.2f} seconds\n"
         f"- Epochs Run: {epoch_count}\n"
     )
-    run_inference()
 
 
 if __name__ == "__main__":

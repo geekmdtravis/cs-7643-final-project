@@ -10,15 +10,17 @@ import numpy as np
 import torch
 import tqdm
 from sklearn.metrics import (
+    average_precision_score,
     classification_report,
-    roc_auc_score,
+    confusion_matrix,
+    coverage_error,
+    f1_score,
+    fbeta_score,
     hamming_loss,
     jaccard_score,
-    average_precision_score,
-    confusion_matrix,
     label_ranking_average_precision_score,
-    coverage_error,
     label_ranking_loss,
+    roc_auc_score,
 )
 from torch.utils.data import DataLoader
 
@@ -85,6 +87,61 @@ def run_inference(
     return all_preds, all_labels
 
 
+def find_optimal_thresholds(
+    y_true: np.ndarray, y_pred_proba: np.ndarray, labels: list
+) -> dict:
+    """
+    Find optimal classification thresholds for each label based on class prevalence.
+
+    Args:
+        y_true (np.ndarray): Array of true labels
+        y_pred_proba (np.ndarray): Array of predicted probabilities
+        labels (list): List of class labels
+
+    Returns:
+        dict: Dictionary mapping label names to their optimal thresholds
+    """
+    thresholds = {}
+
+    for i, label in enumerate(labels):
+        # Extract label-specific values
+        y_true_label = y_true[:, i]
+        y_pred_label = y_pred_proba[:, i]
+
+        # Calculate prevalence
+        prevalence = np.mean(y_true_label)
+
+        # Generate potential thresholds
+        potential_thresholds = np.linspace(0.01, 0.99, 99)
+
+        best_threshold = 0.5  # Default
+        best_metric = 0
+
+        # For rare classes (low prevalence), prioritize recall
+        # For common classes, balance precision and recall
+        if prevalence < 0.01:  # Very rare
+            for threshold in potential_thresholds:
+                y_pred_binary = (y_pred_label >= threshold).astype(int)
+                # Beta=2 gives recall twice the importance of precision
+                f2_score_val = fbeta_score(y_true_label, y_pred_binary, beta=2)
+
+                if f2_score_val > best_metric:
+                    best_metric = f2_score_val
+                    best_threshold = threshold
+        else:  # More common
+            for threshold in potential_thresholds:
+                y_pred_binary = (y_pred_label >= threshold).astype(int)
+                f1_score_val = f1_score(y_true_label, y_pred_binary)
+
+                if f1_score_val > best_metric:
+                    best_metric = f1_score_val
+                    best_threshold = threshold
+
+        thresholds[label] = best_threshold
+
+    return thresholds
+
+
 def evaluate_model(preds: np.ndarray, labels: np.ndarray):
     """
     Evaluate the model using multiple metrics suitable for multi-label classification.
@@ -104,11 +161,16 @@ def evaluate_model(preds: np.ndarray, labels: np.ndarray):
             - coverage_error: Coverage error
             - ranking_loss: Ranking loss
     """
-    # Convert probabilities to binary predictions
-    binary_preds = (preds > 0.5).astype(int)
+    # Find optimal thresholds for each class
+    thresholds = find_optimal_thresholds(labels, preds, cfg.class_labels)
 
-    # Initialize results dictionary
-    results = {}
+    # Convert probabilities to binary predictions using optimal thresholds
+    binary_preds = np.zeros_like(preds)
+    for i, label in enumerate(cfg.class_labels):
+        binary_preds[:, i] = (preds[:, i] >= thresholds[label]).astype(int)
+
+    # Initialize results dictionary and store thresholds
+    results = {"thresholds": thresholds}
 
     # 1. AUC Scores (per class)
     auc_scores = []
@@ -167,6 +229,11 @@ def print_evaluation_results(
             If None, results are only printed.
     """
     output = []
+
+    # Optimal Thresholds section
+    output.append("Optimal Classification Thresholds:\n")
+    for class_name, threshold in results["thresholds"].items():
+        output.append(f"{class_name}: {threshold:.4f}")
 
     # AUC Scores section
     output.append("AUC Scores:\n")
