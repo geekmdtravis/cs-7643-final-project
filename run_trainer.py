@@ -1,6 +1,6 @@
 from src.models import CXRModelConfig
 from src.models.cxr_model import SupportedModels
-from src.utils import train_model, run_inference
+from src.utils import run_inference, train_model
 
 MODELS: list[SupportedModels] = [
     "densenet121",

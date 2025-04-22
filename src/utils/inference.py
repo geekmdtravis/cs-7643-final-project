@@ -9,7 +9,17 @@ from typing import Literal
 import numpy as np
 import torch
 import tqdm
-from sklearn.metrics import classification_report, roc_auc_score
+from sklearn.metrics import (
+    classification_report,
+    roc_auc_score,
+    hamming_loss,
+    jaccard_score,
+    average_precision_score,
+    confusion_matrix,
+    label_ranking_average_precision_score,
+    coverage_error,
+    label_ranking_loss,
+)
 from torch.utils.data import DataLoader
 
 from ..models import CXRModel
@@ -77,17 +87,30 @@ def run_inference(
 
 def evaluate_model(preds: np.ndarray, labels: np.ndarray):
     """
-    Evaluate the model using classification report and ROC AUC score.
+    Evaluate the model using multiple metrics suitable for multi-label classification.
 
     Args:
         preds (np.ndarray): Array of predicted probabilities.
         labels (np.ndarray): Array of true labels.
     Returns:
-        tuple: Tuple containing:
-            - auc_scores (list): List of AUC scores for each class.
-            - report (dict): Classification report as a dictionary.
+        dict: Dictionary containing various evaluation metrics:
+            - auc_scores: List of AUC scores for each class
+            - report: Classification report as a dictionary
+            - hamming_loss: Hamming loss score
+            - jaccard_similarity: Jaccard similarity score
+            - avg_precision: Average precision score
+            - confusion_matrices: List of confusion matrices for each class
+            - lrap: Label ranking average precision
+            - coverage_error: Coverage error
+            - ranking_loss: Ranking loss
     """
-    auc_scores = []
+    # Convert probabilities to binary predictions
+    binary_preds = (preds > 0.5).astype(int)
+
+    # Initialize results dictionary
+    results = {}
+
+    # 1. AUC Scores (per class)
     auc_scores = []
     for i in range(labels.shape[1]):
         if len(np.unique(labels[:, i])) > 1:
@@ -95,52 +118,98 @@ def evaluate_model(preds: np.ndarray, labels: np.ndarray):
             auc_scores.append(auc)
         else:
             auc_scores.append(np.nan)
+    results["auc_scores"] = auc_scores
 
-    binary_preds = (preds > 0.5).astype(int)
+    # 2. Classification Report
     report = classification_report(
         labels, binary_preds, target_names=cfg.class_labels, output_dict=True
     )
-    return auc_scores, report
+    results["report"] = report
+
+    # 3. Hamming Loss
+    results["hamming_loss"] = hamming_loss(labels, binary_preds)
+
+    # 4. Jaccard Similarity (IoU)
+    results["jaccard_similarity"] = jaccard_score(
+        labels, binary_preds, average="samples"
+    )
+
+    # 5. Average Precision
+    results["avg_precision"] = average_precision_score(
+        labels, preds, average="weighted"
+    )
+
+    # 6. Confusion Matrices (one per class)
+    confusion_matrices = []
+    for i in range(labels.shape[1]):
+        cm = confusion_matrix(labels[:, i], binary_preds[:, i])
+        confusion_matrices.append(cm)
+    results["confusion_matrices"] = confusion_matrices
+
+    # 7. Label Ranking Metrics
+    results["lrap"] = label_ranking_average_precision_score(labels, preds)
+    results["coverage_error"] = coverage_error(labels, preds)
+    results["ranking_loss"] = label_ranking_loss(labels, preds)
+
+    return results
 
 
 def print_evaluation_results(
-    auc_scores: list,
-    report: dict,
+    results: dict,
     save_path: str = None,
 ):
     """
     Print the evaluation results and optionally save them to a file.
 
     Args:
-        auc_scores (list): List of AUC scores for each class.
-        report (dict): Classification report as a dictionary.
+        results (dict): Dictionary containing all evaluation metrics
         save_path (str, optional): Path to save the results.
             If None, results are only printed.
     """
-    results = []
+    output = []
 
     # AUC Scores section
-    results.append("AUC Scores:\n")
-    for i, (class_name, auc) in enumerate(zip(cfg.class_labels, auc_scores)):
+    output.append("AUC Scores:\n")
+    for i, (class_name, auc) in enumerate(zip(cfg.class_labels, results["auc_scores"])):
         if not np.isnan(auc):
-            results.append(f"AUC for {class_name}: {auc:.4f}")
+            output.append(f"AUC for {class_name}: {auc:.4f}")
         else:
-            results.append(
+            output.append(
                 f"AUC for {class_name}: Not applicable (only one class present)"
             )
 
+    # Overall Metrics
+    output.append("\nOverall Metrics:")
+    output.append(f"Hamming Loss: {results['hamming_loss']:.4f}")
+    output.append(f"Jaccard Similarity: {results['jaccard_similarity']:.4f}")
+    output.append(f"Average Precision: {results['avg_precision']:.4f}")
+    output.append(f"Label Ranking Average Precision: {results['lrap']:.4f}")
+    output.append(f"Coverage Error: {results['coverage_error']:.4f}")
+    output.append(f"Ranking Loss: {results['ranking_loss']:.4f}")
+
     # Classification Report section
-    results.append("\nClassification Report:\n")
-    for class_name, metrics in report.items():
-        results.append(f"Class: {class_name}")
-        results.append(f"  Precision: {metrics['precision']:.4f}")
-        results.append(f"  Recall: {metrics['recall']:.4f}")
-        results.append(f"  F1-score: {metrics['f1-score']:.4f}")
-        results.append(f"  Support: {metrics['support']}")
-        results.append("")
+    output.append("\nClassification Report:\n")
+    for class_name, metrics in results["report"].items():
+        if isinstance(metrics, dict):  # Skip the 'accuracy' and 'macro avg' entries
+            output.append(f"Class: {class_name}")
+            output.append(f"  Precision: {metrics['precision']:.4f}")
+            output.append(f"  Recall: {metrics['recall']:.4f}")
+            output.append(f"  F1-score: {metrics['f1-score']:.4f}")
+            output.append(f"  Support: {metrics['support']}")
+            output.append("")
+
+    # Confusion Matrices
+    output.append("\nConfusion Matrices (per class):")
+    for i, (class_name, cm) in enumerate(
+        zip(cfg.class_labels, results["confusion_matrices"])
+    ):
+        output.append(f"\n{class_name}:")
+        output.append("[[TN FP]")
+        output.append(" [FN TP]]")
+        output.append(str(cm))
 
     # Join all lines into a single string
-    results_str = "\n".join(results)
+    results_str = "\n".join(output)
 
     # Print the results
     print(results_str)

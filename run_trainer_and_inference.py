@@ -38,9 +38,7 @@ if __name__ == "__main__":
 
     preds, labels = run_inference(model=trained_model, test_loader=loader)
 
-    auc_scores, report = evaluate_model(preds, labels)
+    results = evaluate_model(preds, labels)
 
-    print_evaluation_results(
-        auc_scores=auc_scores, report=report, save_path="results/evaluation_report.txt"
-    )
+    print_evaluation_results(results=results, save_path="results/evaluation_report.txt")
     print("Inference completed.")
