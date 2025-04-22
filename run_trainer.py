@@ -20,8 +20,8 @@ def train_selected_model(model: SupportedModels):
     cxr_modal = CXRModel(model=model, freeze_backbone=True, hidden_dims=())
     loss, auc, epoch_time, total_time, epoch_count = train_model(
         model=cxr_modal,
-        lr=1e-3,
-        epochs=25,
+        lr=1e-4,
+        epochs=1,
         batch_size=128,
         focal_loss=True,
         plot_path=f"results/plots/training_curves_{model}.png",

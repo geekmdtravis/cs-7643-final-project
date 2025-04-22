@@ -11,7 +11,7 @@ loader = create_dataloader(
     clinical_data=cfg.tabular_clinical_test,
     cxr_images_dir=cfg.cxr_test_dir,
     num_workers=32,
-    batch_size=32,
+    batch_size=128,
     normalization_mode="imagenet",
 )
 preds, labels = run_inference(
@@ -21,9 +21,11 @@ preds, labels = run_inference(
     device="cuda",
 )
 
+# Get evaluation results
+results = evaluate_model(preds, labels)
 
-auc_scores, report = evaluate_model(preds, labels)
-
+# Print and save results
 print_evaluation_results(
-    auc_scores=auc_scores, report=report, save_path="results/evaluation_report.txt"
+    results=results,
+    save_path="results/evaluation_report.txt",
 )
