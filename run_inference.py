@@ -4,9 +4,9 @@ from src.utils import Config, evaluate_model, print_evaluation_results, run_infe
 
 cfg = Config()
 
-model = CXRModel(model="vit_l_16", freeze_backbone=True, hidden_dims=())
+model = CXRModel(model="vit_b_32_mm", freeze_backbone=True, hidden_dims=())
 
-path = "results/models/best_model_vit_l_16.pth"
+path = "results/models/best_model_vit_b_32_mm.pth"
 loader = create_dataloader(
     clinical_data=cfg.tabular_clinical_test,
     cxr_images_dir=cfg.cxr_test_dir,

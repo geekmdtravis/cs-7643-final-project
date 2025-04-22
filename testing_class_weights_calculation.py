@@ -1,5 +1,3 @@
-"""Train a ViTB32Vanilla model on the NIH Chest X-ray dataset."""
-
 import logging
 from pathlib import Path
 
@@ -15,6 +13,7 @@ from src.losses import FocalLoss, reweight
 
 from src.data.create_dataloader import create_dataloader
 #from src.models.densenet_121_vanilla import DenseNet121Vanilla
+import random
 import ViT_Base
 print("Line 18:")
 print("ViT_Base is loaded from:", ViT_Base.__file__)
@@ -122,9 +121,20 @@ def main():
     # Hyperparameters
     BATCH_SIZE = 32
     NUM_WORKERS = 16  # Increased due to 32 threads available
-    NUM_EPOCHS = 15 #50
+    NUM_EPOCHS = 1 #50
     LR = 1e-4
     WEIGHT_DECAY = 1e-5
+
+    # Setting Seeds for same split:
+    # Set random seeds for reproducibility
+    SEED = 42
+    torch.manual_seed(SEED)
+    random.seed(SEED)
+    np.random.seed(SEED)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+    # Setting Seeds for Same split:
 
     # Create dataset and split into train/val
     dataset = create_dataloader(
@@ -175,84 +185,44 @@ def main():
     ]
     # Calculate class weights using actual distribution
     print("\nCalculating class weights...")
-    class_counts = []
+    '''class_counts = []
     for i in range(15):
         count = sum(1 for _, _, labels in train_dataset if labels[i] == 1)
         class_counts.append(count)
+        print(f"{CLASS_NAMES[i]}: {count} samples")'''
+    
+    '''# Preload all labels from the training dataset
+    all_labels = []
+
+    for _, _, label in train_dataset:
+        all_labels.append(label.unsqueeze(0))  # shape: [1, 15]
+
+    # Stack into a single tensor: shape [N, 15]
+    all_labels_tensor = torch.cat(all_labels, dim=0)
+
+    # Sum over rows to get per-class count
+    class_counts = all_labels_tensor.sum(dim=0).tolist()
+
+    # Optional: Round and cast to int for display
+    class_counts = [int(x) for x in class_counts]'''
+    # Collect all labels into a single numpy array
+    all_labels = np.array([labels for _, _, labels in train_dataset])
+
+    # Sum along axis 0 to get counts for each class
+    class_counts = np.sum(all_labels, axis=0).tolist()
+
+    # Print class counts
+    print("\nClass counts:")
+    for i, count in enumerate(class_counts):
         print(f"{CLASS_NAMES[i]}: {count} samples")
+
 
     class_weights = reweight(class_counts, beta=0.9999)
     print("\nClass weights:")
     for i, weight in enumerate(class_weights):
         print(f"{CLASS_NAMES[i]}: {weight:.4f}")
-
-    # Initialize model, criterion, optimizer
-    model = ViT_Base.ViTB32Vanilla(num_classes=15).to(device)
-    criterion = FocalLoss(weight=class_weights, gamma=2.0) #nn.BCEWithLogitsLoss()
-    optimizer = optim.Adam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="min", factor=0.1, patience=5, verbose=True
-    )
-
-    # Training tracking
-    best_val_loss = float("inf")
-    patience = 10
-    patience_counter = 0
-    train_losses = []
-    val_losses = []
-    train_aucs = []
-    val_aucs = []
-
-    # Training loop
-    for epoch in range(NUM_EPOCHS):
-        logger.info(f"Epoch {epoch+1}/{NUM_EPOCHS}")
-
-        # Train
-        train_loss, train_auc = train_one_epoch(
-            model, train_loader, criterion, optimizer, device
-        )
-        train_losses.append(train_loss)
-        train_aucs.append(train_auc)
-
-        # Validate
-        val_loss, val_auc = validate(model, val_loader, criterion, device)
-        val_losses.append(val_loss)
-        val_aucs.append(val_auc)
-
-        # Log metrics
-        logger.info(
-            f"Train Loss: {train_loss:.4f}, Train AUC: {train_auc:.4f}, "
-            f"Val Loss: {val_loss:.4f}, Val AUC: {val_auc:.4f}"
-        )
-
-        # Learning rate scheduling
-        scheduler.step(val_loss)
-
-        # Save best model
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            file_path = cfg.artifacts / "densenet121_vanilla_best.pth"
-            logger.info(f"Saving best model to {file_path}")
-            torch.save(model.state_dict(), file_path)
-            patience_counter = 0
-        else:
-            patience_counter += 1
-
-        # Early stopping
-        if patience_counter >= patience:
-            logger.info(f"Early stopping triggered after {epoch+1} epochs")
-            break
-
-        # Plot current curves
-        plot_training_curves(train_losses, val_losses, train_aucs, val_aucs)
-
-    logger.info("Training completed!")
-
-    # Save final model
-    final_model_path = cfg.artifacts / "ViT_base_32_vanilla_final.pth"
-    logger.info(f"Saving final model to {final_model_path}")
-    torch.save(model.state_dict(), final_model_path)
-
+    print("class_weights = \n")
+    print(class_weights)
 
 if __name__ == "__main__":
     main()
