@@ -111,10 +111,10 @@ def evaluate_model(preds: np.ndarray, labels: np.ndarray):
     """
     # Convert probabilities to binary predictions
     binary_preds = (preds > 0.5).astype(int)
-    
+
     # Initialize results dictionary
     results = {}
-    
+
     # 1. AUC Scores (per class)
     auc_scores = []
     for i in range(labels.shape[1]):
@@ -123,35 +123,39 @@ def evaluate_model(preds: np.ndarray, labels: np.ndarray):
             auc_scores.append(auc)
         else:
             auc_scores.append(np.nan)
-    results['auc_scores'] = auc_scores
-    
+    results["auc_scores"] = auc_scores
+
     # 2. Classification Report
     report = classification_report(
         labels, binary_preds, target_names=cfg.class_labels, output_dict=True
     )
-    results['report'] = report
-    
+    results["report"] = report
+
     # 3. Hamming Loss
-    results['hamming_loss'] = hamming_loss(labels, binary_preds)
-    
+    results["hamming_loss"] = hamming_loss(labels, binary_preds)
+
     # 4. Jaccard Similarity (IoU)
-    results['jaccard_similarity'] = jaccard_score(labels, binary_preds, average='samples')
-    
+    results["jaccard_similarity"] = jaccard_score(
+        labels, binary_preds, average="samples"
+    )
+
     # 5. Average Precision
-    results['avg_precision'] = average_precision_score(labels, preds, average='weighted')
-    
+    results["avg_precision"] = average_precision_score(
+        labels, preds, average="weighted"
+    )
+
     # 6. Confusion Matrices (one per class)
     confusion_matrices = []
     for i in range(labels.shape[1]):
         cm = confusion_matrix(labels[:, i], binary_preds[:, i])
         confusion_matrices.append(cm)
-    results['confusion_matrices'] = confusion_matrices
-    
+    results["confusion_matrices"] = confusion_matrices
+
     # 7. Label Ranking Metrics
-    results['lrap'] = label_ranking_average_precision_score(labels, preds)
-    results['coverage_error'] = coverage_error(labels, preds)
-    results['ranking_loss'] = label_ranking_loss(labels, preds)
-    
+    results["lrap"] = label_ranking_average_precision_score(labels, preds)
+    results["coverage_error"] = coverage_error(labels, preds)
+    results["ranking_loss"] = label_ranking_loss(labels, preds)
+
     return results
 
 
@@ -171,11 +175,13 @@ def print_evaluation_results(
 
     # AUC Scores section
     output.append("AUC Scores:\n")
-    for i, (class_name, auc) in enumerate(zip(cfg.class_labels, results['auc_scores'])):
+    for i, (class_name, auc) in enumerate(zip(cfg.class_labels, results["auc_scores"])):
         if not np.isnan(auc):
             output.append(f"AUC for {class_name}: {auc:.4f}")
         else:
-            output.append(f"AUC for {class_name}: Not applicable (only one class present)")
+            output.append(
+                f"AUC for {class_name}: Not applicable (only one class present)"
+            )
 
     # Overall Metrics
     output.append("\nOverall Metrics:")
@@ -188,7 +194,7 @@ def print_evaluation_results(
 
     # Classification Report section
     output.append("\nClassification Report:\n")
-    for class_name, metrics in results['report'].items():
+    for class_name, metrics in results["report"].items():
         if isinstance(metrics, dict):  # Skip the 'accuracy' and 'macro avg' entries
             output.append(f"Class: {class_name}")
             output.append(f"  Precision: {metrics['precision']:.4f}")
@@ -199,7 +205,9 @@ def print_evaluation_results(
 
     # Confusion Matrices
     output.append("\nConfusion Matrices (per class):")
-    for i, (class_name, cm) in enumerate(zip(cfg.class_labels, results['confusion_matrices'])):
+    for i, (class_name, cm) in enumerate(
+        zip(cfg.class_labels, results["confusion_matrices"])
+    ):
         output.append(f"\n{class_name}:")
         output.append("[[TN FP]")
         output.append(" [FN TP]]")
