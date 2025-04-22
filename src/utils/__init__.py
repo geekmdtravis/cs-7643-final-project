@@ -5,6 +5,7 @@ This module provides utility functions for image processing and data handling.
 from .config import Config
 from .image_manipulation import embed_clinical_data_into_image, pad_image
 from .inference import evaluate_model, print_evaluation_results, run_inference
+from .persistence import load_model, save_model
 from .preprocessing import (
     convert_agestr_to_years,
     create_working_tabular_df,

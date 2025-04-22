@@ -4,40 +4,43 @@ Run inference on a CXR model from a saved torch model.
 
 import logging
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 import torch
 import tqdm
 from sklearn.metrics import (
+    average_precision_score,
     classification_report,
-    roc_auc_score,
+    confusion_matrix,
+    coverage_error,
+    f1_score,
+    fbeta_score,
     hamming_loss,
     jaccard_score,
-    average_precision_score,
-    confusion_matrix,
     label_ranking_average_precision_score,
-    coverage_error,
     label_ranking_loss,
+    roc_auc_score,
 )
 from torch.utils.data import DataLoader
 
-from src.models import CXRModel
-from src.utils import Config
+from ..models import CXRModel
+from .config import Config
+from .persistence import load_model
 
 cfg = Config()
 
 
 def run_inference(
-    state_dict_path: str,
-    model: CXRModel,
+    model: str | CXRModel,
     test_loader: DataLoader,
-    device: torch.device | str = "cuda",
+    device: torch.device | Literal["cuda", "cpu"] = "cuda",
 ):
     """
     Run inference using the provided model.
 
     Args:
-        model_path (str): Path to the saved model file.
+        model (CXRModel | str): CXRModel or path to a saved model file.
         test_loader (DataLoader): DataLoader for the test dataset.
         device (torch.device | str): Device to run the inference on. Default is "cuda".
     Returns:
@@ -45,27 +48,21 @@ def run_inference(
             - all_preds (np.ndarray): Array of predicted probabilities.
             - all_labels (np.ndarray): Array of true labels.
     """
-    path = Path(state_dict_path)
-    if not path.exists():
-        raise FileNotFoundError(f"Model path {state_dict_path} does not exist.")
-    if not path.is_file():
-        raise ValueError(f"Model path {state_dict_path} is not a file.")
-    if not path.suffix == ".pth":
-        logging.warning(
-            f"Model path {state_dict_path} does not have a .pth extension. "
-            "This may not be a valid model file."
-        )
-    if not isinstance(model, CXRModel):
-        raise TypeError(
-            f"Model should be an instance of CXRModel. Got {type(model)} instead."
-        )
+    if isinstance(model, str):
+        path = Path(model)
+        if not path.exists():
+            raise FileNotFoundError(f"Model path {model} does not exist.")
+        if not path.is_file():
+            raise ValueError(f"Model path {model} is not a file.")
+        if not path.suffix == ".pth":
+            logging.warning(
+                f"Model path {model} does not have a .pth extension. "
+                "This may not be a valid model file."
+            )
 
-    print(f"Loading model from {state_dict_path}...")
-    # Load the state dict
-    model.load_state_dict(torch.load(state_dict_path, map_location=device))
-    print(f"Model loaded successfully from {state_dict_path}.")
-    # Move model to device
-    model = model.to(device)
+        print(f"Loading model from {model}...")
+        model = load_model(path)
+        model = model.to(device)
 
     all_preds = []
     all_labels = []
@@ -90,6 +87,61 @@ def run_inference(
     return all_preds, all_labels
 
 
+def find_optimal_thresholds(
+    y_true: np.ndarray, y_pred_proba: np.ndarray, labels: list
+) -> dict:
+    """
+    Find optimal classification thresholds for each label based on class prevalence.
+
+    Args:
+        y_true (np.ndarray): Array of true labels
+        y_pred_proba (np.ndarray): Array of predicted probabilities
+        labels (list): List of class labels
+
+    Returns:
+        dict: Dictionary mapping label names to their optimal thresholds
+    """
+    thresholds = {}
+
+    for i, label in enumerate(labels):
+        # Extract label-specific values
+        y_true_label = y_true[:, i]
+        y_pred_label = y_pred_proba[:, i]
+
+        # Calculate prevalence
+        prevalence = np.mean(y_true_label)
+
+        # Generate potential thresholds
+        potential_thresholds = np.linspace(0.01, 0.99, 99)
+
+        best_threshold = 0.5  # Default
+        best_metric = 0
+
+        # For rare classes (low prevalence), prioritize recall
+        # For common classes, balance precision and recall
+        if prevalence < 0.01:  # Very rare
+            for threshold in potential_thresholds:
+                y_pred_binary = (y_pred_label >= threshold).astype(int)
+                # Beta=2 gives recall twice the importance of precision
+                f2_score_val = fbeta_score(y_true_label, y_pred_binary, beta=2)
+
+                if f2_score_val > best_metric:
+                    best_metric = f2_score_val
+                    best_threshold = threshold
+        else:  # More common
+            for threshold in potential_thresholds:
+                y_pred_binary = (y_pred_label >= threshold).astype(int)
+                f1_score_val = f1_score(y_true_label, y_pred_binary)
+
+                if f1_score_val > best_metric:
+                    best_metric = f1_score_val
+                    best_threshold = threshold
+
+        thresholds[label] = best_threshold
+
+    return thresholds
+
+
 def evaluate_model(preds: np.ndarray, labels: np.ndarray):
     """
     Evaluate the model using multiple metrics suitable for multi-label classification.
@@ -109,11 +161,16 @@ def evaluate_model(preds: np.ndarray, labels: np.ndarray):
             - coverage_error: Coverage error
             - ranking_loss: Ranking loss
     """
-    # Convert probabilities to binary predictions
-    binary_preds = (preds > 0.5).astype(int)
+    # Find optimal thresholds for each class
+    thresholds = find_optimal_thresholds(labels, preds, cfg.class_labels)
 
-    # Initialize results dictionary
-    results = {}
+    # Convert probabilities to binary predictions using optimal thresholds
+    binary_preds = np.zeros_like(preds)
+    for i, label in enumerate(cfg.class_labels):
+        binary_preds[:, i] = (preds[:, i] >= thresholds[label]).astype(int)
+
+    # Initialize results dictionary and store thresholds
+    results = {"thresholds": thresholds}
 
     # 1. AUC Scores (per class)
     auc_scores = []
@@ -172,6 +229,11 @@ def print_evaluation_results(
             If None, results are only printed.
     """
     output = []
+
+    # Optimal Thresholds section
+    output.append("Optimal Classification Thresholds:\n")
+    for class_name, threshold in results["thresholds"].items():
+        output.append(f"{class_name}: {threshold:.4f}")
 
     # AUC Scores section
     output.append("AUC Scores:\n")

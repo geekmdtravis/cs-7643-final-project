@@ -36,7 +36,7 @@ freeze_backbone: true
         """Test CXRModelConfig initialization with default values."""
         config = CXRModelConfig(model="densenet121")
         self.assertEqual(config.model, "densenet121")
-        self.assertEqual(config.hidden_dims, (512, 256, 128))
+        self.assertEqual(config.hidden_dims, None)
         self.assertEqual(config.dropout, 0.2)
         self.assertEqual(config.num_classes, 15)
         self.assertEqual(config.tabular_features, 4)
