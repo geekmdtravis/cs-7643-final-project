@@ -3,16 +3,16 @@ from src.models.cxr_model import SupportedModels
 from src.utils import train_model
 
 MODELS: list[SupportedModels] = [
-    #"densenet121",
-    #"densenet121_mm",
-    #"densenet201",
-    #"densenet201_mm",
-    #"vit_b_16",
-    #"vit_b_16_mm",
-    "vit_b_32",
-    "vit_b_32_mm",
-    #"vit_l_16",
-    #"vit_l_16_mm",
+    "densenet121",
+    # "densenet121_mm",
+    # "densenet201",
+    # "densenet201_mm",
+    # "vit_b_16",
+    # "vit_b_16_mm",
+    # "vit_b_32",
+    # "vit_b_32_mm",
+    # "vit_l_16",
+    # "vit_l_16_mm",
 ]
 
 
@@ -21,12 +21,13 @@ def train_selected_model(model: SupportedModels):
     loss, auc, epoch_time, total_time, epoch_count = train_model(
         model=cxr_modal,
         lr=1e-3,
-        epochs=15,
-        batch_size=32,
+        epochs=25,
+        batch_size=128,
         focal_loss=True,
         plot_path=f"results/plots/training_curves_{model}.png",
         best_model_path=f"results/models/best_model_{model}.pth",
         last_model_path=f"results/models/last_model_{model}.pth",
+        train_val_data_path=f"results/train_val_data_{model}.csv",
     )
     print(
         f"Training completed for {model}. Best:\n"

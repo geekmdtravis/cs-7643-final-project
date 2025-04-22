@@ -111,26 +111,47 @@ def evaluate_model(preds: np.ndarray, labels: np.ndarray):
 def print_evaluation_results(
     auc_scores: list,
     report: dict,
+    save_path: str = None,
 ):
     """
-    Print the evaluation results.
+    Print the evaluation results and optionally save them to a file.
 
     Args:
         auc_scores (list): List of AUC scores for each class.
         report (dict): Classification report as a dictionary.
+        save_path (str, optional): Path to save the results.
+            If None, results are only printed.
     """
-    print("AUC Scores:\n")
+    results = []
+
+    # AUC Scores section
+    results.append("AUC Scores:\n")
     for i, (class_name, auc) in enumerate(zip(cfg.class_labels, auc_scores)):
         if not np.isnan(auc):
-            print(f"AUC for {class_name}: {auc:.4f}")
+            results.append(f"AUC for {class_name}: {auc:.4f}")
         else:
-            print(f"AUC for {class_name}: Not applicable (only one class present)")
+            results.append(
+                f"AUC for {class_name}: Not applicable (only one class present)"
+            )
 
-    print("\nClassification Report:\n")
+    # Classification Report section
+    results.append("\nClassification Report:\n")
     for class_name, metrics in report.items():
-        print(f"Class: {class_name}")
-        print(f"  Precision: {metrics['precision']:.4f}")
-        print(f"  Recall: {metrics['recall']:.4f}")
-        print(f"  F1-score: {metrics['f1-score']:.4f}")
-        print(f"  Support: {metrics['support']}")
-        print()
+        results.append(f"Class: {class_name}")
+        results.append(f"  Precision: {metrics['precision']:.4f}")
+        results.append(f"  Recall: {metrics['recall']:.4f}")
+        results.append(f"  F1-score: {metrics['f1-score']:.4f}")
+        results.append(f"  Support: {metrics['support']}")
+        results.append("")
+
+    # Join all lines into a single string
+    results_str = "\n".join(results)
+
+    # Print the results
+    print(results_str)
+
+    # Save to file if save_path is provided
+    if save_path:
+        with open(save_path, "w") as f:
+            f.write(results_str)
+        print(f"Results saved to {save_path}")
