@@ -4,14 +4,14 @@ from src.utils import Config, evaluate_model, print_evaluation_results, run_infe
 
 cfg = Config()
 
-model = CXRModel(model="densenet121", freeze_backbone=True)
+model = CXRModel(model="densenet121", freeze_backbone=True, hidden_dims=())
 
 path = "results/models/best_model_densenet121.pth"
 loader = create_dataloader(
     clinical_data=cfg.tabular_clinical_test,
     cxr_images_dir=cfg.cxr_test_dir,
     num_workers=32,
-    batch_size=16,
+    batch_size=128,
     normalization_mode="imagenet",
 )
 preds, labels = run_inference(
