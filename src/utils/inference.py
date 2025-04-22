@@ -4,6 +4,7 @@ Run inference on a CXR model from a saved torch model.
 
 import logging
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 import torch
@@ -11,23 +12,23 @@ import tqdm
 from sklearn.metrics import classification_report, roc_auc_score
 from torch.utils.data import DataLoader
 
-from src.models import CXRModel
-from src.utils import Config
+from ..models import CXRModel
+from .config import Config
+from .persistence import load_model
 
 cfg = Config()
 
 
 def run_inference(
-    state_dict_path: str,
-    model: CXRModel,
+    model: str | CXRModel,
     test_loader: DataLoader,
-    device: torch.device | str = "cuda",
+    device: torch.device | Literal["cuda", "cpu"] = "cuda",
 ):
     """
     Run inference using the provided model.
 
     Args:
-        model_path (str): Path to the saved model file.
+        model (CXRModel | str): CXRModel or path to a saved model file.
         test_loader (DataLoader): DataLoader for the test dataset.
         device (torch.device | str): Device to run the inference on. Default is "cuda".
     Returns:
@@ -35,27 +36,21 @@ def run_inference(
             - all_preds (np.ndarray): Array of predicted probabilities.
             - all_labels (np.ndarray): Array of true labels.
     """
-    path = Path(state_dict_path)
-    if not path.exists():
-        raise FileNotFoundError(f"Model path {state_dict_path} does not exist.")
-    if not path.is_file():
-        raise ValueError(f"Model path {state_dict_path} is not a file.")
-    if not path.suffix == ".pth":
-        logging.warning(
-            f"Model path {state_dict_path} does not have a .pth extension. "
-            "This may not be a valid model file."
-        )
-    if not isinstance(model, CXRModel):
-        raise TypeError(
-            f"Model should be an instance of CXRModel. Got {type(model)} instead."
-        )
+    if isinstance(model, str):
+        path = Path(model)
+        if not path.exists():
+            raise FileNotFoundError(f"Model path {model} does not exist.")
+        if not path.is_file():
+            raise ValueError(f"Model path {model} is not a file.")
+        if not path.suffix == ".pth":
+            logging.warning(
+                f"Model path {model} does not have a .pth extension. "
+                "This may not be a valid model file."
+            )
 
-    print(f"Loading model from {state_dict_path}...")
-    # Load the state dict
-    model.load_state_dict(torch.load(state_dict_path, map_location=device))
-    print(f"Model loaded successfully from {state_dict_path}.")
-    # Move model to device
-    model = model.to(device)
+        print(f"Loading model from {model}...")
+        model = load_model(path)
+        model = model.to(device)
 
     all_preds = []
     all_labels = []

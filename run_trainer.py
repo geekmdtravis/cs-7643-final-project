@@ -1,6 +1,6 @@
-from src.models import CXRModel
+from src.models import CXRModelConfig
 from src.models.cxr_model import SupportedModels
-from src.utils import train_model
+from src.utils import train_model, run_inference
 
 MODELS: list[SupportedModels] = [
     "densenet121",
@@ -16,14 +16,14 @@ MODELS: list[SupportedModels] = [
 ]
 
 
-def train_selected_model(model: SupportedModels):
-    cxr_modal = CXRModel(model=model, freeze_backbone=True, hidden_dims=())
-    loss, auc, epoch_time, total_time, epoch_count = train_model(
-        model=cxr_modal,
-        lr=1e-3,
-        epochs=25,
+def run_trainer(model: SupportedModels):
+    model_config = CXRModelConfig(model=model, freeze_backbone=True)
+    loss, auc, epoch_time, total_time, epoch_count, _trained_model = train_model(
+        model_config=model_config,
+        lr=1e-4,
+        epochs=1,
         batch_size=128,
-        focal_loss=True,
+        focal_loss=False,
         plot_path=f"results/plots/training_curves_{model}.png",
         best_model_path=f"results/models/best_model_{model}.pth",
         last_model_path=f"results/models/last_model_{model}.pth",
@@ -37,10 +37,11 @@ def train_selected_model(model: SupportedModels):
         f"- Total Time: {total_time:.2f} seconds\n"
         f"- Epochs Run: {epoch_count}\n"
     )
+    run_inference()
 
 
 if __name__ == "__main__":
     print(f"One epoch of training for models: \n\t-{"\n\t-".join(MODELS)}\n")
     for model in MODELS:
-        train_selected_model(model=model)
+        run_trainer(model=model)
     print("Training completed for all models.")

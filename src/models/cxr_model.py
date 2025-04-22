@@ -53,7 +53,8 @@ class CXRModelConfig:
             - vit_b_32_mm
             - vit_l_16
             - vit_l_16_mm
-        hidden_dims (tuple[int]): Hidden dimensions for the classifier.
+        hidden_dims (tuple[int] | list[int] | None): Hidden dimensions for
+            the classifier. Defaults to None.
         dropout (float): Dropout rate for the classifier.
         num_classes (int): Number of output classes. Defaults to 15
             (14 pathologies + 1 no pathology).
@@ -66,7 +67,7 @@ class CXRModelConfig:
     """
 
     model: SupportedModels
-    hidden_dims: tuple[int] = (512, 256, 128)
+    hidden_dims: tuple[int] | list[int] | None = None
     dropout: float = 0.2
     num_classes: int = 15
     tabular_features: int = 4
@@ -143,7 +144,7 @@ class CXRModel(nn.Module):
     def __init__(
         self,
         model: SupportedModels,
-        hidden_dims: tuple[int] = (512, 256, 128),
+        hidden_dims: tuple[int] | list[int] | None = None,
         dropout: float = 0.2,
         num_classes: int = 15,
         tabular_features: int = 4,
@@ -152,7 +153,11 @@ class CXRModel(nn.Module):
         """
         Initialize the CXR Model.
         Args:
-            hidden_dims (tuple[int]): Hidden dimensions for the classifier
+            hidden_dims (tuple[int] | list[int] | None): Hidden dimensions for
+                the classifier. Defaults to None. When None is provided,
+                the model will not use hidden layers and the default
+                classification head will be used, where the output from
+                the backbone is passed directly to the classifier.
             dropout (float): Dropout rate for the classifier
             num_classes (int): Number of output classes. Defaults to 15
                 (14 pathologies + 1 no pathology)
@@ -169,6 +174,8 @@ class CXRModel(nn.Module):
             class directly.
         """
         super(CXRModel, self).__init__()
+
+        hidden_dims = hidden_dims if hidden_dims is not None else ()
 
         self.model_name = model
 
