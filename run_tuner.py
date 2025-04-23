@@ -43,6 +43,8 @@ def run_study(
         lr=lr,
         batch_size=bs,
         epochs=50,
+        focal_loss_gamma=5.0,
+        focal_loss_rebal_beta=0.999999,
         plot_path=(
             f"results/tuning/{model}_lr_{lr}_bs_{bs}_do_"
             f"{dropout}_hd_{hidden_dims}.png"
