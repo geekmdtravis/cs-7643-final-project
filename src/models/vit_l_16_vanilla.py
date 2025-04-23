@@ -1,15 +1,15 @@
 """
-DenseNet-201 Vanilla Model
+Vision Transformer (ViT-L/16) Vanilla Model
 """
 
 import torch
 import torch.nn as nn
-from torchvision.models import DenseNet201_Weights, densenet201
+from torchvision.models import ViT_L_16_Weights, vit_l_16
 
 
-class DenseNet201Vanilla(nn.Module):
+class ViTL16Vanilla(nn.Module):
     """
-    Vanilla DenseNet-201 model from torchvision with ImageNet pretrained weights
+    Vanilla ViT-L/16 model from torchvision with ImageNet pretrained weights
     """
 
     def __init__(
@@ -21,7 +21,7 @@ class DenseNet201Vanilla(nn.Module):
         demo_mode: bool = False,
     ):
         """
-        Initialize the DenseNet-201 model
+        Initialize the ViT-L/16 model
         Args:
             hidden_dims (tuple[int]): Hidden dimensions for the classifier
             dropout (float): Dropout rate for the classifier
@@ -29,7 +29,7 @@ class DenseNet201Vanilla(nn.Module):
                 (14 pathologies + 1 no pathology)
             freeze_backbone (bool): Whether to freeze the backbone model parameters
                 during training. Defaults to False. When set to True will freeze
-                all parameters in the DenseNet-201 model except for the classifier
+                all parameters in the ViT-L/16 model except for the classifier
                 head.
             demo_mode (bool): Whether to use demo mode. Defaults to False.
                 When set to True, the model keeps the original classifier head
@@ -37,16 +37,16 @@ class DenseNet201Vanilla(nn.Module):
                 demonstration purposes or when the number of classes is the same
                 as the original model.
         """
-        super(DenseNet201Vanilla, self).__init__()
-        self.model = densenet201(weights=DenseNet201_Weights.IMAGENET1K_V1)
+        super(ViTL16Vanilla, self).__init__()
+        self.model = vit_l_16(weights=ViT_L_16_Weights.IMAGENET1K_V1)
 
         if freeze_backbone:
             for param in self.model.parameters():
                 param.requires_grad = False
 
         if not demo_mode:
-            num_features = self.model.classifier.in_features
-            self.model.classifier = nn.Identity()
+            num_features = self.model.hidden_dim
+            self.model.heads = nn.Identity()
             layers = []
             input_dim = num_features
             for hidden_dim in hidden_dims:

@@ -33,17 +33,20 @@ cfg = Config()
 def shuffle_split_save(
     clinical_data: Path,
     output_dir: Path,
-    test_size: float = 0.2,
+    val_size: float,
+    test_size: float,
     seed: int = 42,
 ):
     """
-    Splits the clinical data into training and testing sets and saves them to
-        the specified directory as 'train.csv' and 'test.csv'.
+    Splits the clinical data into training, validation, and testing
+    sets and saves them to the specified directory as 'train.csv',
+    'val.csv', and 'test.csv'.
 
     Args:
         clinical_data (Path): Path to the clinical data CSV file.
         output_dir (Path): Directory where the split data will be saved.
-        test_size (float): Proportion of the dataset to include in the test split.
+        val_size (float): Proportion of non-test data to include in validation split.
+        test_size (float): Proportion of the entire dataset to include in test split.
         seed (int): Random seed for reproducibility.
 
     Returns:
@@ -56,10 +59,21 @@ def shuffle_split_save(
     clinical_df = pd.read_csv(clinical_data)
     _clinical_df = create_working_tabular_df(clinical_df)
 
-    # Split the data into training and testing sets
-    split = train_test_split(_clinical_df, test_size=test_size, seed=seed)
-    train_df: pd.DataFrame = impute_and_normalize(split[0])
-    test_df: pd.DataFrame = impute_and_normalize(split[1])
+    # First split off test set
+    train_val_df, test_df = train_test_split(
+        _clinical_df, test_size=test_size, seed=seed
+    )
+
+    # Calculate val_size relative to remaining data to maintain desired ratio
+    effective_val_size = val_size * (1 - test_size)
+    train_df, val_df = train_test_split(
+        train_val_df, test_size=effective_val_size, seed=seed
+    )
+
+    # Apply normalization to all splits
+    train_df = impute_and_normalize(train_df)
+    val_df = impute_and_normalize(val_df)
+    test_df = impute_and_normalize(test_df)
 
     if not output_dir.exists():
         error = f"shuffle_split_save: output_dir={output_dir} does not exist"
@@ -67,6 +81,7 @@ def shuffle_split_save(
         raise FileNotFoundError(error)
 
     train_df.to_csv(output_dir / "train.csv", index=False)
+    val_df.to_csv(output_dir / "val.csv", index=False)
     test_df.to_csv(output_dir / "test.csv", index=False)
 
 
@@ -165,10 +180,19 @@ def copy_cached_imgs_to_artifacts(
 
 
 def create_save_embedded_images(
-    images_dir: Path, clinical_data: Path, dest_dir: Path
+    images_dir: Path, clinical_data: Path, dest_dir: Path, matrix_size: int = 16
 ) -> None:
     """
     Copy the embedded images to the artifacts directory.
+
+    Args:
+        images_dir (Path): Directory containing the original images.
+        clinical_data (Path): Path to the clinical data CSV file.
+        dest_dir (Path): Directory where the embedded images will be saved.
+        matrix_size (int): Size of the matrix for embedding clinical data.
+
+    Returns:
+        None
     """
     if not dest_dir.exists():
         error = f"create_save_embedded_images: dest_dir={dest_dir} does not exist"
@@ -184,17 +208,24 @@ def create_save_embedded_images(
             image_name = image.name
             pil_image = Image.open(image)
             image_tensor = TF.to_tensor(pil_image)
+            # Get matching clinical data row
+            matching_row = clinical_df[clinical_df["imageIndex"] == image_name]
+            if matching_row.empty:
+                error = (
+                    "create_save_embedded_images: No "
+                    f"clinical data found for {image_name}"
+                )
+                logging.error(error)
+                raise ValueError(error)
+
             tabular_batch = torch.tensor(
-                clinical_df[clinical_df["imageIndex"] == image_name]
-                .iloc[0]
-                .values[1:5]
-                .astype(float)
+                matching_row.iloc[0].values[1:5].astype(float)
             ).float()
 
             embedded_img = embed_clinical_data_into_image(
                 image_batch=torch.stack([image_tensor]),
                 tabular_batch=torch.stack([tabular_batch]),
-                matrix_size=16,
+                matrix_size=matrix_size,
             )
             save_path = dest_dir / image_name
             embedded_image = embedded_img.cpu().detach()[0]
@@ -207,13 +238,18 @@ def create_save_embedded_images(
             raise FileNotFoundError(error)
 
 
-def process_data(test_size: float = 0.2, seed: int = 42) -> None:
+def prepare_data(test_size: float, val_size: float, seed: int = 42) -> None:
     """
     Process the data for the Chest X-ray dataset. The
     output directory of the clinical data is
-    `{workspace}/artifacts/{train|test}.csv` and the
-    images are saved to `{workspace}/artifacts/cxr_{train|test}` and
-    `{workspace}/artifacts/embedded_{train|test}`.
+    `{workspace}/artifacts/{train|val|test}.csv` and the
+    images are saved to `{workspace}/artifacts/cxr_{train|val|test}` and
+    `{workspace}/artifacts/embedded_{train|val|test}`.
+
+    Args:
+        test_size (float): Proportion of entire dataset to use for test split.
+        val_size (float): Proportion of non-test data to use for validation split.
+        seed (int): Random seed for reproducibility.
     """
 
     cached_clin_data, cached_cxr_imgs_dir = download_dataset()
@@ -222,6 +258,7 @@ def process_data(test_size: float = 0.2, seed: int = 42) -> None:
     shuffle_split_save(
         clinical_data=cached_clin_data,
         output_dir=cfg.artifacts,
+        val_size=val_size,
         test_size=test_size,
         seed=seed,
     )
@@ -234,22 +271,66 @@ def process_data(test_size: float = 0.2, seed: int = 42) -> None:
         kaggle_cache_cxr_dir=cached_cxr_imgs_dir,
         dest_dir=cfg.cxr_train_dir,
     )
+    logging.info(
+        "process_data: Copying unmodified validation images to artifacts directory."
+    )
+    copy_cached_imgs_to_artifacts(
+        clinical_data=cfg.tabular_clinical_val,
+        kaggle_cache_cxr_dir=cached_cxr_imgs_dir,
+        dest_dir=cfg.cxr_val_dir,
+    )
     logging.info("process_data: Copying unmodified test images to artifacts directory.")
     copy_cached_imgs_to_artifacts(
         clinical_data=cfg.tabular_clinical_test,
         kaggle_cache_cxr_dir=cached_cxr_imgs_dir,
         dest_dir=cfg.cxr_test_dir,
     )
+
     logging.info("process_data: Copying embedded train images to artifacts directory.")
     create_save_embedded_images(
         images_dir=cfg.cxr_train_dir,
         clinical_data=cfg.tabular_clinical_train,
         dest_dir=cfg.embedded_train_dir,
     )
+    logging.info(
+        "process_data: Copying embedded validation images to artifacts directory."
+    )
+    create_save_embedded_images(
+        images_dir=cfg.cxr_val_dir,
+        clinical_data=cfg.tabular_clinical_val,
+        dest_dir=cfg.embedded_val_dir,
+    )
     logging.info("process_data: Copying embedded test images to artifacts directory.")
     create_save_embedded_images(
         images_dir=cfg.cxr_test_dir,
         clinical_data=cfg.tabular_clinical_test,
         dest_dir=cfg.embedded_test_dir,
+    )
+    logging.info(
+        "process_data: Copying 32px embedded train images to artifacts directory."
+    )
+    create_save_embedded_images(
+        images_dir=cfg.cxr_train_dir,
+        clinical_data=cfg.tabular_clinical_train,
+        dest_dir=cfg.embedded32_train_dir,
+        matrix_size=32,
+    )
+    logging.info(
+        "process_data: Copying 32px embedded validation images to artifacts directory."
+    )
+    create_save_embedded_images(
+        images_dir=cfg.cxr_val_dir,
+        clinical_data=cfg.tabular_clinical_val,
+        dest_dir=cfg.embedded32_val_dir,
+        matrix_size=32,
+    )
+    logging.info(
+        "process_data: Copying 32px embedded test images to artifacts directory."
+    )
+    create_save_embedded_images(
+        images_dir=cfg.cxr_test_dir,
+        clinical_data=cfg.tabular_clinical_test,
+        dest_dir=cfg.embedded32_test_dir,
+        matrix_size=32,
     )
     logging.info("process_data: Data processing complete.")
