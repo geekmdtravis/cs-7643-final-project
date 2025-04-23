@@ -172,7 +172,13 @@ def evaluate_model(preds: np.ndarray, labels: np.ndarray):
     # Initialize results dictionary and store thresholds
     results = {"thresholds": thresholds}
 
-    # 1. AUC Scores (per class and averages)
+    # 1. Generate Classification Report first
+    report = classification_report(
+        labels, binary_preds, target_names=cfg.class_labels, output_dict=True
+    )
+    results["report"] = report
+
+    # 2. AUC Scores (per class and averages)
     auc_scores = []
     valid_indices = []
 
@@ -186,30 +192,20 @@ def evaluate_model(preds: np.ndarray, labels: np.ndarray):
 
     results["auc_scores"] = auc_scores
 
-    # Calculate averages
-    valid_aucs = [auc for auc in auc_scores if not np.isnan(auc)]
-    valid_supports = [
-        results["report"][label]["support"]
-        for i, label in enumerate(cfg.class_labels)
-        if not np.isnan(auc_scores[i])
-    ]
-
     if valid_indices:
         results["micro_auc"] = roc_auc_score(
-            labels[:, valid_indices].ravel(), preds[:, valid_indices].ravel()
+            labels[:, valid_indices], preds[:, valid_indices], average="micro"
         )
-        results["macro_auc"] = np.mean(valid_aucs)
-        results["weighted_auc"] = np.average(valid_aucs, weights=valid_supports)
+        results["macro_auc"] = roc_auc_score(
+            labels[:, valid_indices], preds[:, valid_indices], average="macro"
+        )
+        results["weighted_auc"] = roc_auc_score(
+            labels[:, valid_indices], preds[:, valid_indices], average="weighted"
+        )
     else:
         results["micro_auc"] = np.nan
         results["macro_auc"] = np.nan
         results["weighted_auc"] = np.nan
-
-    # 2. Classification Report
-    report = classification_report(
-        labels, binary_preds, target_names=cfg.class_labels, output_dict=True
-    )
-    results["report"] = report
 
     # 3. Hamming Loss
     results["hamming_loss"] = hamming_loss(labels, binary_preds)
@@ -253,26 +249,39 @@ def print_evaluation_results(
     """
     output = []
 
-    # Optimal Thresholds section
     output.append("Optimal Classification Thresholds:\n")
     for class_name, threshold in results["thresholds"].items():
         output.append(f"{class_name}: {threshold:.4f}")
 
-    # AUC Scores section with averages
-    output.append("\nAUC Scores:")
-    output.append(f"Micro Average AUC: {results['micro_auc']:.4f}")
-    output.append(f"Macro Average AUC: {results['macro_auc']:.4f}")
-    output.append(f"Weighted Average AUC: {results['weighted_auc']:.4f}")
-    output.append("")  # blank line for readability
+    output.append("\nIndividual Class Performance:")
+    output.append(
+        "(AUC scores are binary classification metrics that handle class imbalance)\n"
+    )
 
-    # Individual class AUCs
     for i, (class_name, auc) in enumerate(zip(cfg.class_labels, results["auc_scores"])):
+        support = (
+            results["report"][class_name]["support"]
+            if class_name in results["report"]
+            else 0
+        )
         if not np.isnan(auc):
-            output.append(f"{class_name}: {auc:.4f}")
+            output.append(f"{class_name}:")
+            output.append(f"  AUC Score: {auc:.4f}")
+            output.append(f"  Support: {support} samples")
         else:
-            output.append(f"{class_name}: Not applicable (only one class present)")
+            output.append(f"{class_name}:")
+            output.append("  AUC Score: Not applicable (only one class present)")
+            output.append(f"  Support: {support} samples")
+        output.append("")
 
-    # Overall Metrics
+    output.append("Overall AUC Scores:")
+    output.append(f"Weighted Average AUC: {results['weighted_auc']:.4f}")
+    output.append("  (weights each class's AUC by its frequency)")
+    output.append(f"Macro Average AUC: {results['macro_auc']:.4f}")
+    output.append("  (gives equal weight to each class)")
+    output.append(f"Micro Average AUC: {results['micro_auc']:.4f}")
+    output.append("  (aggregates all predictions regardless of class)")
+
     output.append("\nOverall Metrics:")
     output.append(f"Hamming Loss: {results['hamming_loss']:.4f}")
     output.append(f"Jaccard Similarity: {results['jaccard_similarity']:.4f}")
@@ -281,7 +290,6 @@ def print_evaluation_results(
     output.append(f"Coverage Error: {results['coverage_error']:.4f}")
     output.append(f"Ranking Loss: {results['ranking_loss']:.4f}")
 
-    # Classification Report section
     output.append("\nClassification Report:\n")
     for class_name, metrics in results["report"].items():
         if isinstance(metrics, dict):  # Skip the 'accuracy' and 'macro avg' entries
@@ -292,7 +300,6 @@ def print_evaluation_results(
             output.append(f"  Support: {metrics['support']}")
             output.append("")
 
-    # Confusion Matrices
     output.append("\nConfusion Matrices (per class):")
     for i, (class_name, cm) in enumerate(
         zip(cfg.class_labels, results["confusion_matrices"])
@@ -302,13 +309,10 @@ def print_evaluation_results(
         output.append(" [FN TP]]")
         output.append(str(cm))
 
-    # Join all lines into a single string
     results_str = "\n".join(output)
 
-    # Print the results
     print(results_str)
 
-    # Save to file if save_path is provided
     if save_path:
         with open(save_path, "w") as f:
             f.write(results_str)
