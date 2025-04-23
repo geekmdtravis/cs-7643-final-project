@@ -172,15 +172,38 @@ def evaluate_model(preds: np.ndarray, labels: np.ndarray):
     # Initialize results dictionary and store thresholds
     results = {"thresholds": thresholds}
 
-    # 1. AUC Scores (per class)
+    # 1. AUC Scores (per class and averages)
     auc_scores = []
+    valid_indices = []
+
     for i in range(labels.shape[1]):
         if len(np.unique(labels[:, i])) > 1:
             auc = roc_auc_score(labels[:, i], preds[:, i])
             auc_scores.append(auc)
+            valid_indices.append(i)
         else:
             auc_scores.append(np.nan)
+
     results["auc_scores"] = auc_scores
+
+    # Calculate averages
+    valid_aucs = [auc for auc in auc_scores if not np.isnan(auc)]
+    valid_supports = [
+        results["report"][label]["support"]
+        for i, label in enumerate(cfg.class_labels)
+        if not np.isnan(auc_scores[i])
+    ]
+
+    if valid_indices:
+        results["micro_auc"] = roc_auc_score(
+            labels[:, valid_indices].ravel(), preds[:, valid_indices].ravel()
+        )
+        results["macro_auc"] = np.mean(valid_aucs)
+        results["weighted_auc"] = np.average(valid_aucs, weights=valid_supports)
+    else:
+        results["micro_auc"] = np.nan
+        results["macro_auc"] = np.nan
+        results["weighted_auc"] = np.nan
 
     # 2. Classification Report
     report = classification_report(
@@ -235,15 +258,19 @@ def print_evaluation_results(
     for class_name, threshold in results["thresholds"].items():
         output.append(f"{class_name}: {threshold:.4f}")
 
-    # AUC Scores section
-    output.append("AUC Scores:\n")
+    # AUC Scores section with averages
+    output.append("\nAUC Scores:")
+    output.append(f"Micro Average AUC: {results['micro_auc']:.4f}")
+    output.append(f"Macro Average AUC: {results['macro_auc']:.4f}")
+    output.append(f"Weighted Average AUC: {results['weighted_auc']:.4f}")
+    output.append("")  # blank line for readability
+
+    # Individual class AUCs
     for i, (class_name, auc) in enumerate(zip(cfg.class_labels, results["auc_scores"])):
         if not np.isnan(auc):
-            output.append(f"AUC for {class_name}: {auc:.4f}")
+            output.append(f"{class_name}: {auc:.4f}")
         else:
-            output.append(
-                f"AUC for {class_name}: Not applicable (only one class present)"
-            )
+            output.append(f"{class_name}: Not applicable (only one class present)")
 
     # Overall Metrics
     output.append("\nOverall Metrics:")

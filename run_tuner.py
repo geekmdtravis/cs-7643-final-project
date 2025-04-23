@@ -11,13 +11,11 @@ from src.utils import (
 
 cfg = Config()
 
-LEARNING_RATES = [1e-3, 1e-4, 1e-5, 1e-6]
-BATCH_SIZES = [16, 32, 64, 128]
-DROPOUTS = [0.2, 0.3, 0.4, 0.5]
+LEARNING_RATES = [1e-4, 1e-5, 1e-6]
 MODELS: list[SupportedModels] = [
     "densenet121",
-    "vit_b_32",
     "densenet121_mm",
+    "vit_b_32",
     "vit_b_32_mm",
 ]
 HIDDEN_DIMS = [(512, 256, 128), (512, 256, 128, 64), (512, 256, 128, 64, 32)]
@@ -25,7 +23,7 @@ HIDDEN_DIMS = [(512, 256, 128), (512, 256, 128, 64), (512, 256, 128, 64, 32)]
 
 def run_study(
     model: str,
-    lr: float = 1e-4,
+    lr: float = 1e-5,
     bs: int = 32,
     dropout: float = 0.2,
     hidden_dims: tuple[int] | None = None,
@@ -34,7 +32,9 @@ def run_study(
         f"Beginning model={model} lr={lr} bs={bs} "
         f"dropout={dropout} hidden_dims={hidden_dims}..."
     )
-
+    file_prefix = (
+        f"results/tuning/{model}_lr_{lr}_bs_{bs}_do_{dropout}_hd_{hidden_dims}"
+    )
     model_config = CXRModelConfig(
         model=model, freeze_backbone=True, dropout=dropout, hidden_dims=hidden_dims
     )
@@ -42,21 +42,13 @@ def run_study(
         model_config=model_config,
         lr=lr,
         batch_size=bs,
-        epochs=50,
+        epochs=200,
         focal_loss_gamma=5.0,
         focal_loss_rebal_beta=0.999999,
-        plot_path=(
-            f"results/tuning/{model}_lr_{lr}_bs_{bs}_do_"
-            f"{dropout}_hd_{hidden_dims}.png"
-        ),
-        best_model_path=(
-            f"results/tuning/{model}_lr_{lr}_bs_{bs}_do_"
-            f"{dropout}_hd_{hidden_dims}_best.pth"
-        ),
-        last_model_path=(
-            f"results/tuning/{model}_lr_{lr}_bs_{bs}_do_"
-            f"{dropout}_hd_{hidden_dims}_last.pth"
-        ),
+        plot_path=(f"{file_prefix}.png"),
+        best_model_path=(f"{file_prefix}_best.pth"),
+        last_model_path=(f"{file_prefix}_last.pth"),
+        train_val_data_path=(f"{file_prefix}_tvdata.csv"),
     )
 
     print(
@@ -81,10 +73,7 @@ def run_study(
 
     print_evaluation_results(
         results=results,
-        save_path=(
-            f"results/tuning/{model}_lr_{lr}_bs_{bs}_do_"
-            f"{dropout}_hd_{hidden_dims}_eval.txt"
-        ),
+        save_path=(f"{file_prefix}_eval.txt"),
     )
     print("Inference completed.")
 
@@ -95,10 +84,6 @@ if __name__ == "__main__":
     for model in MODELS:
         for lr in LEARNING_RATES:
             run_study(model=model, lr=lr)
-        for bs in BATCH_SIZES:
-            run_study(model=model, bs=bs)
-        for dropout in DROPOUTS:
-            run_study(model=model, dropout=dropout)
         for hidden_dims in HIDDEN_DIMS:
             run_study(model=model, hidden_dims=hidden_dims)
     print("Hyperparameter tuning completed.")
