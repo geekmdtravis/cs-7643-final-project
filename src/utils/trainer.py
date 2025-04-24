@@ -236,7 +236,7 @@ def train_model(
             - "train-auc"
             - "val-loss"
             - "val-auc"
-        matrix_size (Litera[16,32]) - For embedded images, the size of the matrix
+        matrix_size (Literal[16,32]) - For embedded images, the size of the matrix
             of clinical data embedded into the image. This impacts which CXR images
             loader is selected. Only applied if use_embedded_images is set to True.
 

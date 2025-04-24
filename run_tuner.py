@@ -98,7 +98,7 @@ def run_embedded_study(
     matrix_size: Literal[16, 32] = 32,
 ) -> None:
     print(
-        f"Beginning model={model} lr={lr} bs={bs} ms={ms} "
+        f"Beginning model={model} lr={lr} bs={bs} ms={matrix_size} "
         f"dropout={dropout} hidden_dims={hidden_dims}..."
     )
     file_prefix = (
@@ -167,7 +167,7 @@ if __name__ == "__main__":
         for model in EMBEDDED_MODELS:
             for ms in MATRIX_SIZES:
                 run_embedded_study(model=model, matrix_size=ms)
-            for lor in LEARNING_RATES:
+            for lr in LEARNING_RATES:
                 run_embedded_study(model=model, lr=lr)
             for hidden_dims in HIDDEN_DIMS:
                 run_embedded_study(model=model, hidden_dims=hidden_dims)
