@@ -162,6 +162,7 @@ def train_model(
     epochs: int = 50,
     lr: float = 1e-5,
     batch_size: int = 32,
+    matrix_size: Literal[16, 32] = 16,
     patience: int = 5,
     focal_loss: bool = False,
     focal_loss_rebal_beta: float = 0.9999,
@@ -235,6 +236,9 @@ def train_model(
             - "train-auc"
             - "val-loss"
             - "val-auc"
+        matrix_size (Literal[16,32]) - For embedded images, the size of the matrix
+            of clinical data embedded into the image. This impacts which CXR images
+            loader is selected. Only applied if use_embedded_images is set to True.
 
     Returns:
         tuple[float, float, float, float, int, CXRModel]: The best validation
@@ -260,9 +264,10 @@ def train_model(
         )
 
     if train_loader is None:
-        cxr_train_img_dir = (
-            cfg.embedded_train_dir if use_embedded_imgs else cfg.cxr_train_dir
+        embedded_dir = (
+            cfg.embedded_train_dir if matrix_size == 16 else cfg.embedded32_train_dir
         )
+        cxr_train_img_dir = embedded_dir if use_embedded_imgs else cfg.cxr_train_dir
         train_loader = create_dataloader(
             clinical_data=cfg.tabular_clinical_train,
             cxr_images_dir=cxr_train_img_dir,
@@ -272,9 +277,10 @@ def train_model(
         )
 
     if val_loader is None:
-        cxr_valid_img_dir = (
-            cfg.embedded_val_dir if use_embedded_imgs else cfg.cxr_val_dir
+        embedded_dir = (
+            cfg.embedded_val_dir if matrix_size == 16 else cfg.embedded32_val_dir
         )
+        cxr_valid_img_dir = embedded_dir if use_embedded_imgs else cfg.cxr_val_dir
         val_loader = create_dataloader(
             clinical_data=cfg.tabular_clinical_val,
             cxr_images_dir=cxr_valid_img_dir,
