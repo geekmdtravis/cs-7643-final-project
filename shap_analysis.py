@@ -55,10 +55,12 @@ shap_values = explainer.shap_values(tabular[0:1].cpu().numpy())
 tabular_test_data = pd.read_csv(cfg.tabular_clinical_test)
 
 # Extract only the first 4 columns (tabular data: imageIndex, followUpNumber, patientAge, patientGender)
-tabular_data = tabular_test_data.iloc[:, :4].values  # Get the first 4 columns
+#tabular_data = tabular_test_data.iloc[:, :4].values  # Get the first 4 columns
+tabular_data = tabular_test_data.iloc[:, :].values
 
 # Get the feature names for the first 4 columns (tabular data columns)
-tabular_feature_names = tabular_test_data.columns[:4].tolist()
+#tabular_feature_names = tabular_test_data.columns[:4].tolist()
+tabular_feature_names = tabular_test_data.columns[:].tolist()
 
 # Now calculate SHAP values (adjust the wrapper function if needed for tabular data)
 # Aggregate SHAP values (average along axis 2)
