@@ -30,3 +30,4 @@ dependencies:
       - psutil
       - black
       - flake8
+      - shap
