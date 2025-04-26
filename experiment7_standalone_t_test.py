@@ -433,12 +433,30 @@ class MetricsExtractor:
         std_means_auc = [
             ttest_results.get(m, {}).get("standard_mean", 0) for m in auc_metrics
         ]
+        mm_std_auc = [ttest_results.get(m, {}).get("mm_std", 0) for m in auc_metrics]
+        std_std_auc = [
+            ttest_results.get(m, {}).get("standard_std", 0) for m in auc_metrics
+        ]
 
         x_auc = np.arange(len(labels_auc))
         width = 0.35
 
-        ax1.bar(x_auc - width / 2, mm_means_auc, width, label="MM Model")
-        ax1.bar(x_auc + width / 2, std_means_auc, width, label="Standard Model")
+        ax1.bar(
+            x_auc - width / 2,
+            mm_means_auc,
+            width,
+            yerr=mm_std_auc,
+            capsize=5,
+            label="MM Model",
+        )
+        ax1.bar(
+            x_auc + width / 2,
+            std_means_auc,
+            width,
+            yerr=std_std_auc,
+            capsize=5,
+            label="Standard Model",
+        )
         ax1.set_xlabel("Metric")
         ax1.set_ylabel("AUC Score (log scale)")
         ax1.set_yscale("log")
@@ -453,11 +471,29 @@ class MetricsExtractor:
         std_means_f1 = [
             ttest_results.get(m, {}).get("standard_mean", 0) for m in f1_metrics
         ]
+        mm_std_f1 = [ttest_results.get(m, {}).get("mm_std", 0) for m in f1_metrics]
+        std_std_f1 = [
+            ttest_results.get(m, {}).get("standard_std", 0) for m in f1_metrics
+        ]
 
         x_f1 = np.arange(len(labels_f1))
 
-        ax2.bar(x_f1 - width / 2, mm_means_f1, width, label="MM Model")
-        ax2.bar(x_f1 + width / 2, std_means_f1, width, label="Standard Model")
+        ax2.bar(
+            x_f1 - width / 2,
+            mm_means_f1,
+            width,
+            yerr=mm_std_f1,
+            capsize=5,
+            label="MM Model",
+        )
+        ax2.bar(
+            x_f1 + width / 2,
+            std_means_f1,
+            width,
+            yerr=std_std_f1,
+            capsize=5,
+            label="Standard Model",
+        )
         ax2.set_xlabel("Metric")
         ax2.set_ylabel("F1 Score (log scale)")
         ax2.set_yscale("log")
@@ -488,14 +524,30 @@ class MetricsExtractor:
             ]
             mm_means = [ttest_results[m]["mm_mean"] for m in class_auc_metrics]
             std_means = [ttest_results[m]["standard_mean"] for m in class_auc_metrics]
+            mm_stds = [ttest_results[m]["mm_std"] for m in class_auc_metrics]
+            std_stds = [ttest_results[m]["standard_std"] for m in class_auc_metrics]
 
             fig, ax = plt.subplots(figsize=(12, 8))
             x = np.arange(len(labels))
             width = 0.35
 
             # Use log scale for class AUC scores
-            ax.bar(x - width / 2, mm_means, width, label="MM Model")
-            ax.bar(x + width / 2, std_means, width, label="Standard Model")
+            ax.bar(
+                x - width / 2,
+                mm_means,
+                width,
+                yerr=mm_stds,
+                capsize=5,
+                label="MM Model",
+            )
+            ax.bar(
+                x + width / 2,
+                std_means,
+                width,
+                yerr=std_stds,
+                capsize=5,
+                label="Standard Model",
+            )
 
             ax.set_xlabel("Class")
             ax.set_ylabel("AUC Score (log scale)")
