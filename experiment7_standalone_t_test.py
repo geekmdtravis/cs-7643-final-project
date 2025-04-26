@@ -414,50 +414,62 @@ class MetricsExtractor:
         if output_dir:
             os.makedirs(output_dir, exist_ok=True)
 
-        overall_metrics = [
+        # Separate AUC and F1 metrics
+        auc_metrics = [
             "weighted_auc",
-            "macro_auc",
             "micro_auc",
+        ]
+        f1_metrics = [
             "micro_avg_f1",
-            "macro_avg_f1",
             "weighted_avg_f1",
         ]
 
-        labels = [m.replace("_", " ").title() for m in overall_metrics]
-        mm_means = [ttest_results.get(m, {}).get("mm_mean", 0) for m in overall_metrics]
-        std_means = [
-            ttest_results.get(m, {}).get("standard_mean", 0) for m in overall_metrics
+        # Create side-by-side plots for AUC and F1 scores
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+
+        # Plot AUC metrics
+        labels_auc = [m.replace("_", " ").title() for m in auc_metrics]
+        mm_means_auc = [ttest_results.get(m, {}).get("mm_mean", 0) for m in auc_metrics]
+        std_means_auc = [
+            ttest_results.get(m, {}).get("standard_mean", 0) for m in auc_metrics
         ]
 
-        # Filter out metrics with no data
-        valid_indices = [
-            i
-            for i, (mm, std) in enumerate(zip(mm_means, std_means))
-            if mm != 0 or std != 0
+        x_auc = np.arange(len(labels_auc))
+        width = 0.35
+
+        ax1.bar(x_auc - width / 2, mm_means_auc, width, label="MM Model")
+        ax1.bar(x_auc + width / 2, std_means_auc, width, label="Standard Model")
+        ax1.set_xlabel("Metric")
+        ax1.set_ylabel("AUC Score (log scale)")
+        ax1.set_yscale("log")
+        ax1.set_title("AUC Metrics Comparison")
+        ax1.set_xticks(x_auc)
+        ax1.set_xticklabels(labels_auc, rotation=45, ha="right")
+        ax1.legend()
+
+        # Plot F1 metrics
+        labels_f1 = [m.replace("_", " ").title() for m in f1_metrics]
+        mm_means_f1 = [ttest_results.get(m, {}).get("mm_mean", 0) for m in f1_metrics]
+        std_means_f1 = [
+            ttest_results.get(m, {}).get("standard_mean", 0) for m in f1_metrics
         ]
-        labels = [labels[i] for i in valid_indices]
-        mm_means = [mm_means[i] for i in valid_indices]
-        std_means = [std_means[i] for i in valid_indices]
 
-        if labels:
-            fig, ax = plt.subplots(figsize=(10, 6))
-            x = np.arange(len(labels))
-            width = 0.35
+        x_f1 = np.arange(len(labels_f1))
 
-            ax.bar(x - width / 2, mm_means, width, label="MM Model")
-            ax.bar(x + width / 2, std_means, width, label="Standard Model")
+        ax2.bar(x_f1 - width / 2, mm_means_f1, width, label="MM Model")
+        ax2.bar(x_f1 + width / 2, std_means_f1, width, label="Standard Model")
+        ax2.set_xlabel("Metric")
+        ax2.set_ylabel("F1 Score (log scale)")
+        ax2.set_yscale("log")
+        ax2.set_title("F1 Metrics Comparison")
+        ax2.set_xticks(x_f1)
+        ax2.set_xticklabels(labels_f1, rotation=45, ha="right")
+        ax2.legend()
 
-            ax.set_xlabel("Metric")
-            ax.set_ylabel("Score")
-            ax.set_title("Comparison of Overall Metrics")
-            ax.set_xticks(x)
-            ax.set_xticklabels(labels, rotation=45, ha="right")
-            ax.legend()
-
-            plt.tight_layout()
-            if output_dir:
-                plt.savefig(os.path.join(output_dir, "overall_metrics_comparison.png"))
-            plt.close()
+        plt.tight_layout()
+        if output_dir:
+            plt.savefig(os.path.join(output_dir, "metrics_comparison.png"))
+        plt.close()
 
         class_auc_metrics = [
             m
@@ -470,9 +482,6 @@ class MetricsExtractor:
                 key=lambda x: abs(ttest_results[x]["difference"]), reverse=True
             )
 
-            if len(class_auc_metrics) > 10:
-                class_auc_metrics = class_auc_metrics[:10]
-
             labels = [
                 m.replace("_auc", "").replace("_", " ").title()
                 for m in class_auc_metrics
@@ -484,12 +493,14 @@ class MetricsExtractor:
             x = np.arange(len(labels))
             width = 0.35
 
+            # Use log scale for class AUC scores
             ax.bar(x - width / 2, mm_means, width, label="MM Model")
             ax.bar(x + width / 2, std_means, width, label="Standard Model")
 
             ax.set_xlabel("Class")
-            ax.set_ylabel("AUC Score")
-            ax.set_title("Comparison of Individual Class AUC Scores (Top Differences)")
+            ax.set_ylabel("AUC Score (log scale)")
+            ax.set_yscale("log")
+            ax.set_title("Comparison of Individual Class AUC Scores")
             ax.set_xticks(x)
             ax.set_xticklabels(labels, rotation=45, ha="right")
             ax.legend()
