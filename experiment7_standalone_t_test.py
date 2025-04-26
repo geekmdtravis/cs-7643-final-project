@@ -545,7 +545,10 @@ def run_statistical_analysis():
         help="Directory to save results",
     )
     parser.add_argument(
-        "--visualize", action="store_true", help="Generate visualizations"
+        "--visualize",
+        type=str,
+        help="Directory to save visualizations",
+        default="artifacts/metrics_analysis_results",
     )
 
     args = parser.parse_args()
