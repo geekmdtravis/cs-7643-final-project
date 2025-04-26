@@ -371,7 +371,6 @@ class MetricsExtractor:
                 diff = result["difference"]
                 p_value = result["p_value"]
 
-                # Format the output
                 summary.append(f"{metric_display}:")
                 summary.append(
                     f"  MM model mean: {mm_mean:.4f} ± {result['mm_std']:.4f}"
@@ -414,7 +413,6 @@ class MetricsExtractor:
         if output_dir:
             os.makedirs(output_dir, exist_ok=True)
 
-        # Separate AUC and F1 metrics
         auc_metrics = [
             "weighted_auc",
             "micro_auc",
@@ -424,10 +422,8 @@ class MetricsExtractor:
             "weighted_avg_f1",
         ]
 
-        # Create side-by-side plots for AUC and F1 scores
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
 
-        # Plot AUC metrics
         labels_auc = [m.replace("_", " ").title() for m in auc_metrics]
         mm_means_auc = [ttest_results.get(m, {}).get("mm_mean", 0) for m in auc_metrics]
         std_means_auc = [
@@ -465,7 +461,6 @@ class MetricsExtractor:
         ax1.set_xticklabels(labels_auc, rotation=45, ha="right")
         ax1.legend()
 
-        # Plot F1 metrics
         labels_f1 = [m.replace("_", " ").title() for m in f1_metrics]
         mm_means_f1 = [ttest_results.get(m, {}).get("mm_mean", 0) for m in f1_metrics]
         std_means_f1 = [
@@ -531,7 +526,6 @@ class MetricsExtractor:
             x = np.arange(len(labels))
             width = 0.35
 
-            # Use log scale for class AUC scores
             ax.bar(
                 x - width / 2,
                 mm_means,
