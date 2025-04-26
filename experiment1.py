@@ -38,9 +38,9 @@ def run_trainer_on_model(model: SupportedModels) -> None:
         lr=LR,
         epochs=EPOCHS,
         plot_path=f"{EXP_BASE_PATH}/loss_plot_{model}.png",
-        best_model_path=f"{EXP_BASE_PATH}/model_checkpoint_{model}.pth",
-        last_model_path=f"{EXP_BASE_PATH}/last_model_{model}.pth",
-        train_val_data_path=f"{EXP_BASE_PATH}/train_val_data_{model}.pth",
+        best_model_path=f"{EXP_BASE_PATH}/best{model}.pth",
+        last_model_path=f"{EXP_BASE_PATH}/last{model}.pth",
+        train_val_data_path=f"{EXP_BASE_PATH}/tvdata_{model}.csv",
     )
 
     print(
