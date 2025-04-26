@@ -3,11 +3,18 @@ import shap
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+from tqdm import tqdm
 
 from src.utils import run_inference
 from src.data import create_dataloader
 from src.utils.config import Config
 from src.utils.persistence import load_model
+
+# Parameters
+MAX_SAMPLES = 10#00  # Or set to None for full test set
+TABULAR_BACKGROUND_SIZE = 100
+IMAGE_BACKGROUND_SIZE = 20
 
 # Load config and model
 cfg = Config()
@@ -23,54 +30,134 @@ loader = create_dataloader(
     cxr_images_dir=cfg.cxr_test_dir,
 )
 
-# Get one batch (images, tabular, labels)
-images, tabular, labels = next(iter(loader))
-images, tabular = images.to(device), tabular.to(device)
+# Get all data from loader
+all_images = []
+all_tabular = []
+all_labels = []
 
-# Select background data for SHAP (first 100 tabular samples)
-background = tabular[:100].to(device)
+for batch in loader:
+    imgs, tabs, lbls = batch
+    all_images.append(imgs)
+    all_tabular.append(tabs)
+    all_labels.append(lbls)
+    if MAX_SAMPLES and len(torch.cat(all_images)) >= MAX_SAMPLES:
+        break
 
-# Define a wrapper function if needed to isolate tabular forward
-# Define a wrapper function for SHAP
+images = torch.cat(all_images)[:MAX_SAMPLES].to(device)
+tabular = torch.cat(all_tabular)[:MAX_SAMPLES].to(device)
+labels = torch.cat(all_labels)[:MAX_SAMPLES].to(device)
+
+#####################################################################
+# Step 1: SHAP for TABULAR features (fixing image input)
+#####################################################################
+background_tabular = tabular[:TABULAR_BACKGROUND_SIZE]
+
 def model_tabular_only(tabular_batch):
     if isinstance(tabular_batch, np.ndarray):
         tabular_batch = torch.tensor(tabular_batch, dtype=torch.float32)
-
     tabular_batch = tabular_batch.to(device)
-    repeated_images = images[0].unsqueeze(0).repeat(tabular_batch.shape[0], 1, 1, 1)
-    return model(repeated_images.to(device), tabular_batch).detach().cpu().numpy()
+    repeated_image = images[0].unsqueeze(0).repeat(tabular_batch.size(0), 1, 1, 1)
+    return model(repeated_image, tabular_batch).detach().cpu().numpy()
 
-# SHAP KernelExplainer
-explainer = shap.KernelExplainer(model_tabular_only, background.cpu().numpy())
+explainer_tab = shap.KernelExplainer(model_tabular_only, background_tabular.cpu().numpy())
 
-# Explain one sample
-shap_values = explainer.shap_values(tabular[0:1].cpu().numpy())
+# Accumulate SHAP values for all tabular test samples
+shap_values_tab_list = []
+for i in tqdm(range(len(tabular)), desc="Tabular SHAP"):
+    sample = tabular[i].unsqueeze(0).cpu().numpy()
+    sv = explainer_tab.shap_values(sample)
+    shap_values_tab_list.append(sv)
 
-# Plot
-#print(dir(cfg))
-#print("type(cfg.tabular_clinical_test) =", type(cfg.tabular_clinical_test))
+# Convert to numpy and average
+shap_tab_np = np.array(shap_values_tab_list)  # shape: (samples, outputs, 1, features)
+shap_tab_mean = np.mean(np.abs(shap_tab_np), axis=(0, 2))  # shape: (outputs, features)
+tabular_importance = np.mean(shap_tab_mean)  # scalar
 
-# Load the clinical test data from the file path
-# Load the clinical test data from the file path
-tabular_test_data = pd.read_csv(cfg.tabular_clinical_test)
+#####################################################################
+# Step 2: SHAP for IMAGE features (fixing tabular input)
+#####################################################################
+background_images = images[:IMAGE_BACKGROUND_SIZE]
+fixed_tabular = tabular[0]
 
-# Extract only the first 4 columns (tabular data: imageIndex, followUpNumber, patientAge, patientGender)
-#tabular_data = tabular_test_data.iloc[:, :4].values  # Get the first 4 columns
-tabular_data = tabular_test_data.iloc[:, :].values
+class ImageOnlyModelWrapper(torch.nn.Module):
+    def __init__(self, model, fixed_tabular):
+        super().__init__()
+        self.model = model
+        self.fixed_tabular = fixed_tabular.to(device)
 
-# Get the feature names for the first 4 columns (tabular data columns)
-#tabular_feature_names = tabular_test_data.columns[:4].tolist()
-tabular_feature_names = tabular_test_data.columns[:].tolist()
+    def forward(self, x_img):
+        repeated_tab = self.fixed_tabular.unsqueeze(0).repeat(x_img.size(0), 1)
+        return self.model(x_img, repeated_tab)
 
-# Now calculate SHAP values (adjust the wrapper function if needed for tabular data)
-# Aggregate SHAP values (average along axis 2)
-shap_values_aggregated = np.mean(shap_values, axis=2)
+wrapped_model = ImageOnlyModelWrapper(model, fixed_tabular)
+explainer_img = shap.GradientExplainer(wrapped_model, background_images)
 
-# Print the new shape for debugging
-print("Aggregated SHAP values shape:", shap_values_aggregated.shape)
+# Accumulate SHAP values for all image test samples
+shap_values_img_list = []
+for i in tqdm(range(len(images)), desc="Image SHAP"):
+    img_sample = images[i].unsqueeze(0)
+    shap_vals = explainer_img.shap_values(img_sample)
+    shap_values_img_list.append([np.abs(sv).mean() for sv in shap_vals])  # mean per output class
 
-# Now plot the summary plot
-shap.summary_plot(shap_values_aggregated, tabular_data[0:1], feature_names=tabular_feature_names)
+# Convert to numpy and average
+shap_img_np = np.array(shap_values_img_list)  # shape: (samples, outputs)
+shap_img_mean = np.mean(shap_img_np)  # scalar
 
-# Save the plot as a file
-plt.savefig("shap_summary_plot.png")
+#####################################################################
+# Step 3: Compare and Plot
+#####################################################################
+print("Mean tabular feature importance:", tabular_importance)
+print("Mean image feature importance:", shap_img_mean)
+
+'''plt.figure(figsize=(6, 4))
+plt.bar(["Tabular", "Image"], [tabular_importance, shap_img_mean], color=["skyblue", "salmon"])
+plt.ylabel("Mean SHAP Magnitude")
+plt.title("SHAP Importance: Tabular vs Image (Avg over {} samples)".format(len(tabular)))
+plt.tight_layout()
+plt.savefig("shap_tabular_vs_image_global.png")
+#plt.show()'''
+
+
+
+
+plt.figure(figsize=(6, 4))
+bar_values = [tabular_importance, shap_img_mean]
+bar_labels = ["Tabular", "Image"]
+bar_colors = ["skyblue", "salmon"]
+
+bars = plt.bar(bar_labels, bar_values, color=bar_colors)
+
+# Set log scale for y-axis
+plt.yscale("log")
+
+# Axis labels with different font sizes
+plt.xlabel("Modality", fontsize=14, fontweight='bold')    # x-axis
+plt.ylabel("Mean SHAP Magnitude (log scale)", fontsize=11, fontweight='bold')  # y-axis
+
+# Axis ticks with different font sizes
+plt.xticks(fontsize=12, fontweight='bold')  # x-tick labels
+plt.yticks(fontsize=12, fontweight='bold')  # y-tick labels
+
+plt.ylim(1e-4, 1e-1)  # For example, sets lower and upper bounds on log scale
+
+
+# Title
+plt.title(f"SHAP Importance: Tabular vs Image", fontsize=14, fontweight='bold')
+
+
+# Add value labels above bars
+for bar, val in zip(bars, bar_values):
+    plt.text(
+        bar.get_x() + bar.get_width() / 2,
+        val,
+        f"{val:.2e}",  # scientific notation
+        ha="center",
+        va="bottom",
+        fontsize=10,
+        fontweight='bold'
+    )
+
+plt.tight_layout()
+
+# Save high-resolution PDF
+plt.savefig("shap_tabular_vs_image_global_log.pdf", dpi=500, format='pdf')
