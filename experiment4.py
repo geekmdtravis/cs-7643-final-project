@@ -26,7 +26,7 @@ EMBEDDED_MODELS: list[SupportedModels] = [
 ]
 
 HIDDEN_DIMS = [
-    (512),
+    (512,),
     (512, 256, 128),
     (512, 256, 128, 64, 32),
 ]
