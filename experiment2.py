@@ -4,7 +4,6 @@ epochs to convergence. This script loads the best models and measures
 their performance metrics.
 """
 
-import os
 import time
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -16,7 +15,7 @@ from torch.utils.data import DataLoader
 
 from src.models import CXRModel, CXRModelConfig
 from src.utils import Config, load_model
-from src.utils.trainer import __validate_one_epoch
+from src.utils.trainer import __validate_one_epoch, train_model
 
 # Define the models to test
 MODELS = [
@@ -215,7 +214,7 @@ def test_model(model: CXRModel, val_loader: DataLoader, model_name: str) -> Dict
 
 def analyze_convergence(model_name: str) -> Dict:
     """
-    Analyze the convergence of a model from its training data.
+    Analyze the convergence of a model by retraining it and measuring actual time.
 
     Args:
         model_name (str): Name of the model.
@@ -223,92 +222,55 @@ def analyze_convergence(model_name: str) -> Dict:
     Returns:
         Dict: The convergence analysis results.
     """
-    # Get the path to the training data
-    train_val_data_path = TRAINING_DATA_PATHS.get(model_name)
+    print(f"Retraining {model_name} to measure convergence time...")
 
-    # Check if the path is defined
-    if train_val_data_path is None:
-        print(f"No training data path defined for {model_name}.")
-        return {
-            "model_name": model_name,
-            "epochs_to_convergence": None,
-            "time_to_convergence": None,
-        }
-
-    # Check if the file exists
-    if not os.path.exists(train_val_data_path):
-        print(f"Training data file {train_val_data_path} not found.")
-        return {
-            "model_name": model_name,
-            "epochs_to_convergence": None,
-            "time_to_convergence": None,
-        }
-
-    # Load the training data
-    try:
-        training_data = pd.read_csv(train_val_data_path)
-        print(f"Loaded training data from {train_val_data_path}")
-    except Exception as e:
-        print(f"Error reading {train_val_data_path}: {e}")
-        return {
-            "model_name": model_name,
-            "epochs_to_convergence": None,
-            "time_to_convergence": None,
-        }
-
-    # Find the epoch with the best validation loss
-    best_epoch = training_data["val_loss"].idxmin() + 1
-
-    # Calculate the time to convergence (assuming each epoch takes the same time)
-    # This is an approximation since we don't have the actual time per epoch
-    epochs_to_convergence = best_epoch
-
-    # Estimate time to convergence based on the model type
-    # These are rough estimates based on typical training times
-    estimated_time_per_epoch = {
-        "densenet121": 60,  # seconds
-        "densenet121_mm": 70,
-        "vit_b_32": 120,
-        "vit_b_32_mm": 130,
-        "densenet121_embedded": 80,
-        "vit_b_32_embedded": 140,
-    }
-
-    # Get the estimated time per epoch for this model
-    model_key = model_name
-    if model_key not in estimated_time_per_epoch:
-        # Default to a reasonable value if not specified
-        estimated_time_per_epoch[model_key] = 100
-
-    # Calculate estimated time to convergence in seconds
-    estimated_time_to_convergence = (
-        epochs_to_convergence * estimated_time_per_epoch[model_key]
+    # Create model config
+    model_config = CXRModelConfig(
+        model=model_name,
+        hidden_dims=None,
+        dropout=0.2,
+        num_classes=15,
+        tabular_features=4,
+        freeze_backbone=True,
     )
 
-    # Convert to minutes and hours for readability
-    time_in_minutes = estimated_time_to_convergence / 60
-    time_in_hours = time_in_minutes / 60
+    # Train the model and get metrics
+    loss, auc, epoch_time, total_time, epoch_count, _ = train_model(
+        model_config=model_config,
+        lr=1e-4,
+        epochs=200,  # Set a high number of epochs to allow for convergence
+        batch_size=32,
+        plot_path=f"results/experiment2/convergence_{model_name}.png",
+        best_model_path=f"results/experiment2/convergence_{model_name}_best.pth",
+        last_model_path=f"results/experiment2/convergence_{model_name}_last.pth",
+        train_val_data_path=f"results/experiment2/convergence_{model_name}_tvdata.csv",
+    )
 
     print(f"Convergence analysis for {model_name}:")
-    print(f"  - Epochs to Convergence: {epochs_to_convergence}")
+    print(f"  - Epochs to Convergence: {epoch_count}")
     print(
-        f"  - Estimated Time to Convergence: {estimated_time_to_convergence:.2f} "
-        f"seconds ({time_in_minutes:.2f} minutes, {time_in_hours:.2f} hours)"
+        f"  - Total Training Time: {total_time:.2f} seconds "
+        f"({total_time/60:.2f} minutes, {total_time/3600:.2f} hours)"
     )
-    print(f"  - Training data source: {train_val_data_path}")
+    print(f"  - Average Time per Epoch: {epoch_time:.2f} seconds")
+    print(f"  - Best Validation Loss: {loss:.4f}")
+    print(f"  - Best Validation AUC: {auc:.4f}")
 
     return {
         "model_name": model_name,
-        "epochs_to_convergence": epochs_to_convergence,
-        "time_to_convergence": estimated_time_to_convergence,
-        "time_in_minutes": time_in_minutes,
-        "time_in_hours": time_in_hours,
+        "epochs_to_convergence": epoch_count,
+        "time_to_convergence": total_time,
+        "time_in_minutes": total_time / 60,
+        "time_in_hours": total_time / 3600,
+        "best_val_loss": loss,
+        "best_val_auc": auc,
+        "avg_epoch_time": epoch_time,
     }
 
 
 def plot_results(test_results: List[Dict], convergence_results: List[Dict]) -> None:
     """
-    Plot the test results.
+    Plot the test results and convergence analysis.
 
     Args:
         test_results (List[Dict]): The test results.
@@ -337,22 +299,21 @@ def plot_results(test_results: List[Dict], convergence_results: List[Dict]) -> N
     axes[0, 1].set_ylabel("Loss")
     axes[0, 1].tick_params(axis="x", rotation=45)
 
-    # Plot inference time
-    axes[1, 0].bar(test_df["model_name"], test_df["inference_time"])
-    axes[1, 0].set_title("Inference Time")
+    # Plot total training time
+    axes[1, 0].bar(convergence_df["model_name"], convergence_df["time_in_hours"])
+    axes[1, 0].set_title("Total Training Time (hours)")
     axes[1, 0].set_xlabel("Model")
-    axes[1, 0].set_ylabel("Time (seconds)")
+    axes[1, 0].set_ylabel("Hours")
     axes[1, 0].tick_params(axis="x", rotation=45)
 
     # Plot epochs to convergence
-    if convergence_df["epochs_to_convergence"].notna().any():
-        axes[1, 1].bar(
-            convergence_df["model_name"], convergence_df["epochs_to_convergence"]
-        )
-        axes[1, 1].set_title("Epochs to Convergence")
-        axes[1, 1].set_xlabel("Model")
-        axes[1, 1].set_ylabel("Epochs")
-        axes[1, 1].tick_params(axis="x", rotation=45)
+    axes[1, 1].bar(
+        convergence_df["model_name"], convergence_df["epochs_to_convergence"]
+    )
+    axes[1, 1].set_title("Epochs to Convergence")
+    axes[1, 1].set_xlabel("Model")
+    axes[1, 1].set_ylabel("Epochs")
+    axes[1, 1].tick_params(axis="x", rotation=45)
 
     # Adjust layout
     plt.tight_layout()
@@ -409,7 +370,7 @@ def main():
                 result = test_model(model, val_loader, MODEL_NAMES[model_name])
                 test_results.append(result)
 
-                # Analyze convergence
+                # Analyze convergence by retraining
                 convergence_result = analyze_convergence(model_name)
                 convergence_results.append(convergence_result)
 
@@ -426,7 +387,7 @@ def main():
                 result = test_model(model, val_loader, MODEL_NAMES[embedded_model_name])
                 test_results.append(result)
 
-                # Analyze convergence
+                # Analyze convergence by retraining
                 convergence_result = analyze_convergence(embedded_model_name)
                 convergence_results.append(convergence_result)
 
@@ -442,7 +403,7 @@ def main():
             # Print convergence summary
             print("\nConvergence Summary:")
             convergence_df = pd.DataFrame(convergence_results)
-            convergence_df = convergence_df.sort_values("epochs_to_convergence")
+            convergence_df = convergence_df.sort_values("time_to_convergence")
             print(convergence_df.to_string(index=False))
 
             # Save the summary tables to the log file
