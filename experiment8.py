@@ -17,6 +17,9 @@ from src.utils.grad_cam import (
 
 
 def main():
+    torch.manual_seed(42)
+    np.random.seed(42)
+
     # Load configuration
     cfg = Config()
     logger = logging.getLogger(__name__)
