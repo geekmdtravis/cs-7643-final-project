@@ -43,7 +43,7 @@ def run_trainer_on_model(model: SupportedModels) -> None:
         train_val_data_path=f"{EXP_BASE_PATH}/tvdata_{model}.csv",
     )
 
-    print(
+    results = (
         f"Training completed for {model}. Best:\n"
         f"- Loss: {loss:.4f}\n"
         f"- AUC: {auc:.4f}\n"
@@ -51,6 +51,11 @@ def run_trainer_on_model(model: SupportedModels) -> None:
         f"- Total Time: {total_time:.2f} seconds\n"
         f"- Epochs Run: {epoch_count}\n"
     )
+    with open(f"{EXP_BASE_PATH}/training_report_{model}.txt", "w") as f:
+        f.write(results)
+    print("Training report saved.")
+    print("Training report:")
+    print(results)
 
     loader = create_dataloader(
         clinical_data=cfg.tabular_clinical_test,
@@ -60,11 +65,10 @@ def run_trainer_on_model(model: SupportedModels) -> None:
     print(f"Running inference on {model}...")
     preds, labels = run_inference(model=trained_model, test_loader=loader)
 
-    auc_scores, report = evaluate_model(preds, labels)
+    results = evaluate_model(preds, labels)
 
     print_evaluation_results(
-        auc_scores=auc_scores,
-        report=report,
+        results=results,
         save_path=f"{EXP_BASE_PATH}/evaluation_report_{model}.txt",
     )
     print("Inference completed.")
