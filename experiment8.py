@@ -4,38 +4,26 @@ import logging
 from pathlib import Path
 import torch
 import numpy as np
-import matplotlib.pyplot as plt
-from typing import Union, Optional, Tuple, List, Dict
 
 from src.data.create_dataloader import create_dataloader
 from src.models import CXRModel, CXRModelConfig
 from src.utils import Config
 from src.utils.grad_cam import (
-    CLASSES,
     get_available_layers,
     find_suitable_layer,
     get_gradcam,
-    analyze_matrix_quadrants,
-    visualize_gradcam,
     visualize_clinical_attention,
 )
 
 
 def main():
-    # Set up logging
-    logging.basicConfig(level=logging.INFO)
+    # Load configuration
+    cfg = Config()
     logger = logging.getLogger(__name__)
-
-    # Set device
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    logger.info(f"Using device: {device}")
 
     # Create results directory
     results_dir = Path("results/clinical_attention")
     results_dir.mkdir(parents=True, exist_ok=True)
-
-    # Load configuration
-    cfg = Config()
 
     # Create test dataloader with embedded images
     test_loader = create_dataloader(
@@ -55,25 +43,12 @@ def main():
         tabular_features=4,
         freeze_backbone=True,
     )
-    model = CXRModel(**model_config.as_dict()).to(device)
+    model = CXRModel(**model_config.as_dict()).to(cfg.device)
 
     PATH = "/tmp/cs7643_final_share/travis_results/results/tuning/"
     # Load trained model weights - using strict=False to handle mismatched keys
     model_path = PATH + "embd_densenet121_lr_1e-05_bs_32_do_0.2_hd_None_ms_32_best.pth"
     state_dict = torch.load(model_path)
-
-    # Check if the state dict has the double nesting issue
-    if any(key.startswith("model.model.") for key in state_dict.keys()):
-        logger.info("Detected double nesting in state dict, fixing...")
-        # Create a new state dict with corrected keys
-        new_state_dict = {}
-        for key, value in state_dict.items():
-            if key.startswith("model.model."):
-                new_key = key.replace("model.model.", "model.")
-                new_state_dict[new_key] = value
-            else:
-                new_state_dict[key] = value
-        state_dict = new_state_dict
 
     # Load the state dict with strict=False to handle any remaining mismatches
     model.load_state_dict(state_dict, strict=False)
@@ -104,7 +79,7 @@ def main():
     }
 
     # Track predictions for each class
-    class_predictions = {class_name: [] for class_name in CLASSES}
+    class_predictions = {class_name: [] for class_name in cfg.class_labels}
 
     for i, (images, _, labels) in enumerate(test_loader):
         if i >= num_samples:
@@ -116,7 +91,7 @@ def main():
             continue
 
         target_class = positive_classes[0].item()
-        class_name = CLASSES[target_class]
+        class_name = cfg.class_labels[target_class]
 
         # Analyze attention for this image
         save_path = results_dir / f"clinical_attention_sample_{i}_{class_name}.png"
@@ -126,14 +101,14 @@ def main():
             target_class=target_class,
             class_name=class_name,
             matrix_size=matrix_size,
-            device=device,
+            device=cfg.device,
             save_path=save_path,
             layer_name=layer_name,
         )
 
         # Get model predictions for all classes
         _, _, predictions = get_gradcam(
-            model, images, target_class, layer_name=layer_name, device=device
+            model, images, target_class, layer_name=layer_name, device=cfg.device
         )
 
         # Log the attention values and predictions
@@ -144,7 +119,7 @@ def main():
 
         # Log predictions for all classes
         logger.info(f"Sample {i} - Predictions for all classes:")
-        for j, pred_class in enumerate(CLASSES):
+        for j, pred_class in enumerate(cfg.class_labels):
             pred_value = predictions[0, j].item()
             class_predictions[pred_class].append(pred_value)
             logger.info(f"  {pred_class}: {pred_value:.4f}")
