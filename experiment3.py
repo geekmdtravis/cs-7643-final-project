@@ -1,6 +1,7 @@
 """
 Experiment 3: Compare the best models from previous experiments and output their results
-in a readable format. This script loads the best models and evaluates them on the test set.
+in a readable format. This script loads the best models and evaluates them on the test
+set.
 """
 
 import json
@@ -35,29 +36,29 @@ MODEL_PATHS = {
     # DenseNet121 models
     "densenet121": {
         "regular": "results/models/densenet121_best.pth",
-        "focal": "results/models/densenet121_focal_best.pth"
+        "focal": "results/models/densenet121_focal_best.pth",
     },
     "densenet121_mm": {
         "regular": "results/models/densenet121_mm_best.pth",
-        "focal": "results/models/densenet121_mm_focal_best.pth"
+        "focal": "results/models/densenet121_mm_focal_best.pth",
     },
     "densenet121_embedded": {
         "regular": "results/models/densenet121_embedded_best.pth",
-        "focal": "results/models/densenet121_embedded_focal_best.pth"
+        "focal": "results/models/densenet121_embedded_focal_best.pth",
     },
     # ViT-B/32 models
     "vit_b_32": {
         "regular": "results/models/vit_b_32_best.pth",
-        "focal": "results/models/vit_b_32_focal_best.pth"
+        "focal": "results/models/vit_b_32_focal_best.pth",
     },
     "vit_b_32_mm": {
         "regular": "results/models/vit_b_32_mm_best.pth",
-        "focal": "results/models/vit_b_32_mm_focal_best.pth"
+        "focal": "results/models/vit_b_32_mm_focal_best.pth",
     },
     "vit_b_32_embedded": {
         "regular": "results/models/vit_b_32_embedded_best.pth",
-        "focal": "results/models/vit_b_32_embedded_focal_best.pth"
-    }
+        "focal": "results/models/vit_b_32_embedded_focal_best.pth",
+    },
 }
 
 # Define the model names for display
@@ -73,6 +74,7 @@ MODEL_NAMES = {
 # Define the config
 cfg = Config()
 
+
 def create_performance_plots(df: pd.DataFrame) -> None:
     """
     Create various plots to visualize model performance comparisons.
@@ -81,82 +83,86 @@ def create_performance_plots(df: pd.DataFrame) -> None:
         df (pd.DataFrame): DataFrame containing the evaluation results.
     """
     # Set the style
-    plt.style.use('default')
-    
+    plt.style.use("default")
+
     # Create plots directory
     PLOTS_DIR.mkdir(parents=True, exist_ok=True)
 
     # 1. AUC Score Comparison
     plt.figure(figsize=(12, 6))
-    sns.barplot(data=df, x='model_name', y='auc', hue='loss_type')
-    plt.title('AUC Score Comparison by Model and Loss Type')
-    plt.xticks(rotation=45, ha='right')
+    sns.barplot(data=df, x="model_name", y="auc", hue="loss_type")
+    plt.title("AUC Score Comparison by Model and Loss Type")
+    plt.xticks(rotation=45, ha="right")
     plt.tight_layout()
-    plt.savefig(PLOTS_DIR / 'auc_comparison.png')
+    plt.savefig(PLOTS_DIR / "auc_comparison.png")
     plt.close()
 
     # 2. F1 Score Comparison
     plt.figure(figsize=(12, 6))
-    sns.barplot(data=df, x='model_name', y='f1', hue='loss_type')
-    plt.title('F1 Score Comparison by Model and Loss Type')
-    plt.xticks(rotation=45, ha='right')
+    sns.barplot(data=df, x="model_name", y="f1", hue="loss_type")
+    plt.title("F1 Score Comparison by Model and Loss Type")
+    plt.xticks(rotation=45, ha="right")
     plt.tight_layout()
-    plt.savefig(PLOTS_DIR / 'f1_comparison.png')
+    plt.savefig(PLOTS_DIR / "f1_comparison.png")
     plt.close()
 
     # 3. Combined Performance Metrics
-    metrics = ['auc', 'precision', 'recall', 'f1']
-    
+    metrics = ["auc", "precision", "recall", "f1"]
+
     # Create a long-format DataFrame for the metrics
     plot_df = df.melt(
-        id_vars=['model_name', 'loss_type'],
+        id_vars=["model_name", "loss_type"],
         value_vars=metrics,
-        var_name='metric',
-        value_name='score'
+        var_name="metric",
+        value_name="score",
     )
-    
+
     # Create subplots for each metric
     g = sns.catplot(
         data=plot_df,
-        x='model_name',
-        y='score',
-        hue='loss_type',
-        col='metric',
-        kind='bar',
+        x="model_name",
+        y="score",
+        hue="loss_type",
+        col="metric",
+        kind="bar",
         height=4,
-        aspect=1.5
+        aspect=1.5,
     )
-    
+
     # Customize the plot
-    g.fig.suptitle('Performance Metrics Comparison by Model and Loss Type', y=1.02)
-    
+    g.fig.suptitle("Performance Metrics Comparison by Model and Loss Type", y=1.02)
+
     # Rotate x-axis labels for each subplot
     for ax in g.axes.flat:
-        plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
-    
+        plt.setp(ax.get_xticklabels(), rotation=45, ha="right")
+
     plt.tight_layout()
-    plt.savefig(PLOTS_DIR / 'combined_metrics.png')
+    plt.savefig(PLOTS_DIR / "combined_metrics.png")
     plt.close()
 
     # 4. Model Type Comparison (DenseNet vs ViT)
     plt.figure(figsize=(10, 6))
-    sns.boxplot(data=df, x='model_type', y='auc', hue='loss_type')
-    plt.title('AUC Score Distribution by Model Type and Loss Type')
+    sns.boxplot(data=df, x="model_type", y="auc", hue="loss_type")
+    plt.title("AUC Score Distribution by Model Type and Loss Type")
     plt.tight_layout()
-    plt.savefig(PLOTS_DIR / 'model_type_comparison.png')
+    plt.savefig(PLOTS_DIR / "model_type_comparison.png")
     plt.close()
 
     # 5. Architecture Features Impact
-    features = ['is_multimodal', 'is_embedded']
+    features = ["is_multimodal", "is_embedded"]
     for feature in features:
         plt.figure(figsize=(10, 6))
-        sns.boxplot(data=df, x=feature, y='auc', hue='loss_type')
-        plt.title(f'AUC Score Distribution by {feature.replace("is_", "").title()} and Loss Type')
+        sns.boxplot(data=df, x=feature, y="auc", hue="loss_type")
+        feature_name = feature.replace("is_", "").title()
+        plt.title(f"AUC Score Distribution by {feature_name} and Loss Type")
         plt.tight_layout()
-        plt.savefig(PLOTS_DIR / f'{feature}_impact.png')
+        plt.savefig(PLOTS_DIR / f"{feature}_impact.png")
         plt.close()
 
-def evaluate_model_performance(model_path: str, model_name: str, loss_type: str) -> Dict:
+
+def evaluate_model_performance(
+    model_path: str, model_name: str, loss_type: str
+) -> Dict:
     """
     Evaluate a model's performance on the test set.
 
@@ -216,6 +222,7 @@ def evaluate_model_performance(model_path: str, model_name: str, loss_type: str)
 
     return results
 
+
 def save_results(results: List[Dict]) -> None:
     """
     Save the evaluation results in multiple formats.
@@ -245,7 +252,7 @@ def save_results(results: List[Dict]) -> None:
             "auc": result["macro_auc"],  # Using macro AUC as the main AUC metric
             "precision": weighted_avg["precision"],
             "recall": weighted_avg["recall"],
-            "f1": weighted_avg["f1-score"]
+            "f1": weighted_avg["f1-score"],
         }
         processed_results.append(processed_result)
 
@@ -255,16 +262,18 @@ def save_results(results: List[Dict]) -> None:
     df.to_csv(OUTPUT_DIR / "results.csv", index=False)
 
     # Create a summary table
-    summary = df[[
-        "model_name",
-        "loss_type",
-        "auc",
-        "precision",
-        "recall",
-        "f1",
-        "is_multimodal",
-        "is_embedded"
-    ]].sort_values(["model_name", "loss_type"])
+    summary = df[
+        [
+            "model_name",
+            "loss_type",
+            "auc",
+            "precision",
+            "recall",
+            "f1",
+            "is_multimodal",
+            "is_embedded",
+        ]
+    ].sort_values(["model_name", "loss_type"])
 
     # Save summary as markdown
     with open(OUTPUT_DIR / "summary.md", "w") as f:
@@ -277,17 +286,24 @@ def save_results(results: List[Dict]) -> None:
         f.write("## Detailed Analysis\n\n")
         for model_type in ["DenseNet121", "ViT-B/32"]:
             f.write(f"### {model_type}\n\n")
-            model_results = df[df["model_type"] == model_type].sort_values(["model_name", "loss_type"])
-            f.write(tabulate(model_results, headers="keys", tablefmt="pipe", showindex=False))
+            model_results = df[df["model_type"] == model_type].sort_values(
+                ["model_name", "loss_type"]
+            )
+            f.write(
+                tabulate(
+                    model_results, headers="keys", tablefmt="pipe", showindex=False
+                )
+            )
             f.write("\n\n")
 
     # Create visualization plots
     create_performance_plots(df)
 
+
 def main():
     """Main function to run the experiment."""
     print("Starting Experiment 3: Model Comparison...")
-    
+
     # Evaluate all models
     results = []
     for model_key in MODELS:
@@ -295,7 +311,9 @@ def main():
             model_path = MODEL_PATHS[model_key][loss_type]
             model_name = MODEL_NAMES[model_key]
             try:
-                model_results = evaluate_model_performance(model_path, model_name, loss_type)
+                model_results = evaluate_model_performance(
+                    model_path, model_name, loss_type
+                )
                 results.append(model_results)
             except Exception as e:
                 print(f"Error evaluating {model_name} ({loss_type} loss): {str(e)}")
@@ -305,5 +323,6 @@ def main():
     print(f"\nResults have been saved to {OUTPUT_DIR}/")
     print(f"Plots have been saved to {PLOTS_DIR}/")
 
+
 if __name__ == "__main__":
-    main() 
+    main()
