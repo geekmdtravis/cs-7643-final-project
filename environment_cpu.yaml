@@ -31,3 +31,4 @@ dependencies:
       - black
       - flake8
       - shap
+      - tabulate
