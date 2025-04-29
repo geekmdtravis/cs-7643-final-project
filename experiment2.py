@@ -17,7 +17,6 @@ from src.models import CXRModel, CXRModelConfig
 from src.utils import Config, load_model
 from src.utils.trainer import __validate_one_epoch, train_model
 
-# Define the models to test
 MODELS = [
     "densenet121",
     "densenet121_mm",
@@ -25,7 +24,6 @@ MODELS = [
     "vit_b_32_mm",
 ]
 
-# Define the model paths (you'll need to provide these)
 MODEL_PATHS = {
     "densenet121": (
         "/tmp/cs7643_final_share/travis_results/results/tuning/"
@@ -45,7 +43,6 @@ MODEL_PATHS = {
     ),
 }
 
-# Define the embedded model paths (you'll need to provide these)
 EMBEDDED_MODEL_PATHS = {
     "densenet121": (
         "/tmp/cs7643_final_share/travis_results/results/tuning/"
@@ -57,7 +54,6 @@ EMBEDDED_MODEL_PATHS = {
     ),
 }
 
-# Define the training data paths
 TRAINING_DATA_PATHS = {
     "densenet121": (
         "/tmp/cs7643_final_share/travis_results/results/tuning/"
@@ -85,7 +81,6 @@ TRAINING_DATA_PATHS = {
     ),
 }
 
-# Define the model names for display
 MODEL_NAMES = {
     "densenet121": "DenseNet121",
     "densenet121_mm": "DenseNet121 (Multimodal)",
@@ -95,16 +90,12 @@ MODEL_NAMES = {
     "vit_b_32_embedded": "ViT-B/32 (Embedded)",
 }
 
-# Define the batch size for testing
 BATCH_SIZE = 32
 
-# Define the number of workers for the DataLoader
 NUM_WORKERS = 4
 
-# Define the criterion for testing
 CRITERION = nn.BCEWithLogitsLoss()
 
-# Define the config
 cfg = Config()
 
 
@@ -123,7 +114,6 @@ def load_model_and_config(model_path: str) -> Tuple[CXRModel, CXRModelConfig]:
     model = model.to(cfg.device)
     model.eval()
 
-    # Create a new config from the model's attributes
     config = CXRModelConfig(
         model=model.model_name,
         hidden_dims=None,
@@ -149,14 +139,12 @@ def create_dataloader(model_name: str, use_embedded: bool = False) -> DataLoader
     """
     from src.data import create_dataloader
 
-    # Determine which image directory to use
     if use_embedded:
         embedded_dir = cfg.embedded32_val_dir
         cxr_valid_img_dir = embedded_dir
     else:
         cxr_valid_img_dir = cfg.cxr_val_dir
 
-    # Create the DataLoader
     val_loader = create_dataloader(
         clinical_data=cfg.tabular_clinical_val,
         cxr_images_dir=cxr_valid_img_dir,
@@ -182,7 +170,6 @@ def test_model(model: CXRModel, val_loader: DataLoader, model_name: str) -> Dict
     """
     print(f"Testing {model_name}...")
 
-    # Measure inference time
     start_time = time.time()
     val_loss, val_auc = __validate_one_epoch(
         model=model,
@@ -194,7 +181,6 @@ def test_model(model: CXRModel, val_loader: DataLoader, model_name: str) -> Dict
     end_time = time.time()
     inference_time = end_time - start_time
 
-    # Calculate average time per batch
     avg_time_per_batch = inference_time / len(val_loader)
 
     print(f"Test results for {model_name}:")
@@ -224,11 +210,9 @@ def analyze_convergence(model_name: str) -> Dict:
     """
     print(f"Retraining {model_name} to measure convergence time...")
 
-    # Check if this is an embedded model
     is_embedded = "embedded" in model_name
     base_model_name = model_name.replace("_embedded", "")
 
-    # Create model config
     model_config = CXRModelConfig(
         model=base_model_name,
         hidden_dims=None,
@@ -238,13 +222,12 @@ def analyze_convergence(model_name: str) -> Dict:
         freeze_backbone=True,
     )
 
-    # Train the model and get metrics
     loss, auc, epoch_time, total_time, epoch_count, _ = train_model(
         model_config=model_config,
         lr=1e-4,
-        epochs=200,  # Set a high number of epochs to allow for convergence
+        epochs=200,
         batch_size=32,
-        use_embedded_imgs=is_embedded,  # Use embedded images if embedded model
+        use_embedded_imgs=is_embedded,
         matrix_size=32,
         plot_path=f"results/experiment2/convergence_{model_name}.png",
         best_model_path=f"results/experiment2/convergence_{model_name}_best.pth",
@@ -282,37 +265,30 @@ def plot_results(test_results: List[Dict], convergence_results: List[Dict]) -> N
         test_results (List[Dict]): The test results.
         convergence_results (List[Dict]): The convergence analysis results.
     """
-    # Create a DataFrame from the test results
     test_df = pd.DataFrame(test_results)
 
-    # Create a DataFrame from the convergence results
     convergence_df = pd.DataFrame(convergence_results)
 
-    # Create a figure with subplots
     fig, axes = plt.subplots(2, 2, figsize=(15, 12))
 
-    # Plot validation AUC
     axes[0, 0].bar(test_df["model_name"], test_df["val_auc"])
     axes[0, 0].set_title("Validation AUC")
     axes[0, 0].set_xlabel("Model")
     axes[0, 0].set_ylabel("AUC")
     axes[0, 0].tick_params(axis="x", rotation=45)
 
-    # Plot validation loss
     axes[0, 1].bar(test_df["model_name"], test_df["val_loss"])
     axes[0, 1].set_title("Validation Loss")
     axes[0, 1].set_xlabel("Model")
     axes[0, 1].set_ylabel("Loss")
     axes[0, 1].tick_params(axis="x", rotation=45)
 
-    # Plot total training time
     axes[1, 0].bar(convergence_df["model_name"], convergence_df["time_in_hours"])
     axes[1, 0].set_title("Total Training Time (hours)")
     axes[1, 0].set_xlabel("Model")
     axes[1, 0].set_ylabel("Hours")
     axes[1, 0].tick_params(axis="x", rotation=45)
 
-    # Plot epochs to convergence
     axes[1, 1].bar(
         convergence_df["model_name"], convergence_df["epochs_to_convergence"]
     )
@@ -321,23 +297,17 @@ def plot_results(test_results: List[Dict], convergence_results: List[Dict]) -> N
     axes[1, 1].set_ylabel("Epochs")
     axes[1, 1].tick_params(axis="x", rotation=45)
 
-    # Adjust layout
     plt.tight_layout()
 
-    # Save the figure
-    plt.savefig("results/experiment2/model_comparison.png")
     print("Results plot saved to results/experiment2/model_comparison.png")
 
 
 def main():
     """Main function."""
-    # Create results directory if it doesn't exist
     Path("results/experiment2").mkdir(parents=True, exist_ok=True)
 
-    # Create a log file to save all output
     log_file_path = "results/experiment2/model_comparison_results.txt"
     with open(log_file_path, "w") as log_file:
-        # Redirect stdout to both console and file
         import sys
 
         original_stdout = sys.stdout
@@ -359,64 +329,48 @@ def main():
         sys.stdout = TeeOutput(log_file, original_stdout)
 
         try:
-            # Test results
             test_results = []
             convergence_results = []
 
-            # Test each model
             for model_name in MODELS:
-                # Load the model and its configuration
                 model_path = MODEL_PATHS[model_name]
                 model, config = load_model_and_config(model_path)
 
-                # Create the DataLoader
                 val_loader = create_dataloader(model_name)
 
-                # Test the model
                 result = test_model(model, val_loader, MODEL_NAMES[model_name])
                 test_results.append(result)
 
-                # Analyze convergence by retraining
                 convergence_result = analyze_convergence(model_name)
                 convergence_results.append(convergence_result)
 
-            # Test embedded models
             for model_name, model_path in EMBEDDED_MODEL_PATHS.items():
-                # Load the model and its configuration
                 model, config = load_model_and_config(model_path)
 
-                # Create the DataLoader with embedded images
                 val_loader = create_dataloader(model_name, use_embedded=True)
 
-                # Test the model
                 embedded_model_name = f"{model_name}_embedded"
                 result = test_model(model, val_loader, MODEL_NAMES[embedded_model_name])
                 test_results.append(result)
 
-                # Analyze convergence by retraining
                 convergence_result = analyze_convergence(embedded_model_name)
                 convergence_results.append(convergence_result)
 
-            # Plot the results
             plot_results(test_results, convergence_results)
 
-            # Print a summary table
             print("\nSummary Table:")
             summary_df = pd.DataFrame(test_results)
             summary_df = summary_df.sort_values("val_auc", ascending=False)
             print(summary_df.to_string(index=False))
 
-            # Print convergence summary
             print("\nConvergence Summary:")
             convergence_df = pd.DataFrame(convergence_results)
             convergence_df = convergence_df.sort_values("time_to_convergence")
             print(convergence_df.to_string(index=False))
 
-            # Save the summary tables to the log file
             print(f"\nResults saved to {log_file_path}")
 
         finally:
-            # Restore original stdout
             sys.stdout = original_stdout
             log_file.close()
 
