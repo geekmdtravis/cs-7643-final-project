@@ -104,21 +104,16 @@ def find_optimal_thresholds(
     thresholds = {}
 
     for i, label in enumerate(labels):
-        # Extract label-specific values
         y_true_label = y_true[:, i]
         y_pred_label = y_pred_proba[:, i]
 
-        # Calculate prevalence
         prevalence = np.mean(y_true_label)
 
-        # Generate potential thresholds
         potential_thresholds = np.linspace(0.01, 0.99, 99)
 
-        best_threshold = 0.5  # Default
+        best_threshold = 0.5
         best_metric = 0
 
-        # For rare classes (low prevalence), prioritize recall
-        # For common classes, balance precision and recall
         if prevalence < 0.01:  # Very rare
             for threshold in potential_thresholds:
                 y_pred_binary = (y_pred_label >= threshold).astype(int)
@@ -161,24 +156,19 @@ def evaluate_model(preds: np.ndarray, labels: np.ndarray):
             - coverage_error: Coverage error
             - ranking_loss: Ranking loss
     """
-    # Find optimal thresholds for each class
     thresholds = find_optimal_thresholds(labels, preds, cfg.class_labels)
 
-    # Convert probabilities to binary predictions using optimal thresholds
     binary_preds = np.zeros_like(preds)
     for i, label in enumerate(cfg.class_labels):
         binary_preds[:, i] = (preds[:, i] >= thresholds[label]).astype(int)
 
-    # Initialize results dictionary and store thresholds
     results = {"thresholds": thresholds}
 
-    # 1. Generate Classification Report first
     report = classification_report(
         labels, binary_preds, target_names=cfg.class_labels, output_dict=True
     )
     results["report"] = report
 
-    # 2. AUC Scores (per class and averages)
     auc_scores = []
     valid_indices = []
 
@@ -207,27 +197,22 @@ def evaluate_model(preds: np.ndarray, labels: np.ndarray):
         results["macro_auc"] = np.nan
         results["weighted_auc"] = np.nan
 
-    # 3. Hamming Loss
     results["hamming_loss"] = hamming_loss(labels, binary_preds)
 
-    # 4. Jaccard Similarity (IoU)
     results["jaccard_similarity"] = jaccard_score(
         labels, binary_preds, average="samples"
     )
 
-    # 5. Average Precision
     results["avg_precision"] = average_precision_score(
         labels, preds, average="weighted"
     )
 
-    # 6. Confusion Matrices (one per class)
     confusion_matrices = []
     for i in range(labels.shape[1]):
         cm = confusion_matrix(labels[:, i], binary_preds[:, i])
         confusion_matrices.append(cm)
     results["confusion_matrices"] = confusion_matrices
 
-    # 7. Label Ranking Metrics
     results["lrap"] = label_ranking_average_precision_score(labels, preds)
     results["coverage_error"] = coverage_error(labels, preds)
     results["ranking_loss"] = label_ranking_loss(labels, preds)
@@ -292,7 +277,7 @@ def print_evaluation_results(
 
     output.append("\nClassification Report:\n")
     for class_name, metrics in results["report"].items():
-        if isinstance(metrics, dict):  # Skip the 'accuracy' and 'macro avg' entries
+        if isinstance(metrics, dict):
             output.append(f"Class: {class_name}")
             output.append(f"  Precision: {metrics['precision']:.4f}")
             output.append(f"  Recall: {metrics['recall']:.4f}")

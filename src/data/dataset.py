@@ -59,14 +59,11 @@ class ChestXrayDataset(Dataset):
                 - tabular_features: Patient metadata as a tensor
                 - labels: Disease labels as a tensor
         """
-        # Get image path and load image
         img_name = self.tabular_df.iloc[idx]["imageIndex"]
         img_path = os.path.join(self.images_dir, img_name)
         _image = Image.open(img_path).convert("RGB")
-        # Always apply transform since we now have a default ToTensor
         image = self.transform(_image)
 
-        # Get labels (filter columns that start with 'label_')
         labels = self.tabular_df.iloc[idx].filter(like="label_").values.astype(float)
         labels = torch.FloatTensor(labels)
 

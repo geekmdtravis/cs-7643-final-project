@@ -2,18 +2,21 @@
 
 import logging
 from pathlib import Path
-import torch
+
 import numpy as np
+import torch
 
 from src.data.create_dataloader import create_dataloader
 from src.models import CXRModel, CXRModelConfig
 from src.utils import Config
 from src.utils.grad_cam import (
-    get_available_layers,
     find_suitable_layer,
+    get_available_layers,
     get_gradcam,
     visualize_clinical_attention,
 )
+
+cfg = Config()
 
 
 def run_analysis(model_name: str, model_path: str, results_dir: Path):
@@ -21,19 +24,14 @@ def run_analysis(model_name: str, model_path: str, results_dir: Path):
     logger = logging.getLogger(__name__)
     logger.info(f"Running analysis for {model_name}")
 
-    # Load configuration
-    cfg = Config()
-
-    # Create test dataloader with embedded images
     test_loader = create_dataloader(
         clinical_data=cfg.tabular_clinical_test,
-        cxr_images_dir=cfg.embedded32_test_dir,  # Use embedded images w/ 32 matrix size
-        batch_size=1,  # Process one image at a time
+        cxr_images_dir=cfg.embedded32_test_dir,
+        batch_size=1,
         num_workers=4,
         normalization_mode="imagenet",
     )
 
-    # Initialize model
     model_config = CXRModelConfig(
         model=model_name,
         hidden_dims=(),
@@ -44,28 +42,27 @@ def run_analysis(model_name: str, model_path: str, results_dir: Path):
     )
     model = CXRModel(**model_config.as_dict()).to(cfg.device)
 
-    # Load trained model weights - using strict=False to handle mismatched keys
     state_dict = torch.load(model_path)
     model.load_state_dict(state_dict, strict=False)
     logger.info("Model loaded successfully")
 
-    # Print available layers for debugging
     available_layers = get_available_layers(model)
     logger.info(f"Found {len(available_layers)} layers with weights in the model")
     logger.info("First 10 layers:")
     for layer in available_layers[:10]:
         logger.info(f"  {layer}")
 
-    # Find a suitable layer for Grad-CAM
-    preferred_patterns = ["denseblock4", "denseblock3", "conv", "features", "blocks"] if model_name == "densenet121" else ["blocks", "attn", "mlp"]
+    preferred_patterns = (
+        ["denseblock4", "denseblock3", "conv", "features", "blocks"]
+        if model_name == "densenet121"
+        else ["blocks", "attn", "mlp"]
+    )
     layer_name = find_suitable_layer(model, preferred_patterns)
     logger.info(f"Selected layer for Grad-CAM: {layer_name}")
 
-    # Process a few samples
     num_samples = 10
     matrix_size = 32
 
-    # Track attention statistics across samples
     all_quadrant_attention = {
         "follow_up": [],
         "age": [],
@@ -73,14 +70,12 @@ def run_analysis(model_name: str, model_path: str, results_dir: Path):
         "view_position": [],
     }
 
-    # Track predictions for each class
     class_predictions = {class_name: [] for class_name in cfg.class_labels}
 
     for i, (images, _, labels) in enumerate(test_loader):
         if i >= num_samples:
             break
 
-        # Get the first positive class for this image
         positive_classes = torch.where(labels[0] == 1)[0]
         if len(positive_classes) == 0:
             continue
@@ -88,7 +83,6 @@ def run_analysis(model_name: str, model_path: str, results_dir: Path):
         target_class = positive_classes[0].item()
         class_name = cfg.class_labels[target_class]
 
-        # Analyze attention for this image
         save_path = results_dir / f"clinical_attention_sample_{i}_{class_name}.pdf"
         quadrant_attention = visualize_clinical_attention(
             model=model,
@@ -101,18 +95,15 @@ def run_analysis(model_name: str, model_path: str, results_dir: Path):
             layer_name=layer_name,
         )
 
-        # Get model predictions for all classes
         _, _, predictions = get_gradcam(
             model, images, target_class, layer_name=layer_name, device=cfg.device
         )
 
-        # Log the attention values and predictions
         logger.info(f"Sample {i} - {class_name} attention:")
         for feature, attention in quadrant_attention.items():
             logger.info(f"  {feature}: {attention:.4f}")
             all_quadrant_attention[feature].append(attention)
 
-        # Log predictions for all classes
         logger.info(f"Sample {i} - Predictions for all classes:")
         for j, pred_class in enumerate(cfg.class_labels):
             pred_value = predictions[0, j].item()
@@ -121,19 +112,16 @@ def run_analysis(model_name: str, model_path: str, results_dir: Path):
 
         logger.info(f"Saved attention analysis for sample {i} - {class_name}")
 
-    # Calculate and log average attention across all samples
     logger.info("\nAverage attention across all samples:")
     for feature, attentions in all_quadrant_attention.items():
         avg_attention = np.mean(attentions)
         logger.info(f"  {feature}: {avg_attention:.4f}")
 
-    # Calculate and log average predictions for each class
     logger.info("\nAverage predictions for each class:")
     for class_name, predictions in class_predictions.items():
         avg_prediction = np.mean(predictions)
         logger.info(f"  {class_name}: {avg_prediction:.4f}")
 
-    # Save summary statistics
     with open(results_dir / "attention_summary.txt", "w") as f:
         f.write("Clinical Matrix Attention Summary\n")
         f.write("================================\n\n")
@@ -148,37 +136,31 @@ def run_analysis(model_name: str, model_path: str, results_dir: Path):
             f.write(f"  {class_name}: {avg_prediction:.4f}\n")
 
 
+BASE_PATH = "/tmp/cs7643_final_share/best_models"
+
+
 def main():
     torch.manual_seed(42)
     np.random.seed(42)
 
-    # Load configuration
-    cfg = Config()
-    logger = logging.getLogger(__name__)
-
-    # Create base results directory
     base_results_dir = Path("results/experiment8")
     base_results_dir.mkdir(parents=True, exist_ok=True)
 
-    # Define models to analyze
     models = [
         {
             "name": "densenet121",
-            "path": "results/models/densenet121_embedded_best.pth",
-            "results_dir": base_results_dir / "densenet121"
+            "path": f"{BASE_PATH}/densenet121_embedded_best.pth",
+            "results_dir": base_results_dir / "densenet121",
         }
     ]
 
-    # Run analysis for each model
     for model_info in models:
-        # Create results directory
         model_info["results_dir"].mkdir(parents=True, exist_ok=True)
-        
-        # Run analysis
+
         run_analysis(
             model_name=model_info["name"],
             model_path=model_info["path"],
-            results_dir=model_info["results_dir"]
+            results_dir=model_info["results_dir"],
         )
 
 

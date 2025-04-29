@@ -132,7 +132,6 @@ def __plot_training_curves(
     if not save_path.endswith(".png"):
         save_path += ".png"
 
-    # Plot losses
     plt.subplot(1, 2, 1)
     plt.plot(train_losses, label="Train Loss")
     plt.plot(val_losses, label="Val Loss")
@@ -141,7 +140,6 @@ def __plot_training_curves(
     plt.title(f"{title_prefix} - Loss")
     plt.legend()
 
-    # Plot AUC-ROC
     plt.subplot(1, 2, 2)
     plt.plot(train_aucs, label="Train AUC-ROC")
     plt.plot(val_aucs, label="Val AUC-ROC")
@@ -297,10 +295,8 @@ def train_model(
         )
         train_data = train_loader.dataset
 
-        # Collect all labels into a single numpy array
         all_labels = np.array([labels for _, _, labels in train_data])
 
-        # Sum along axis 0 to get counts for each class
         class_counts = np.sum(all_labels, axis=0).tolist()
 
         criterion = FocalLoss(
@@ -398,7 +394,6 @@ def train_model(
         save_path=plot_path,
     )
     print(f"Saving train/val data to {train_val_data_path}")
-    # Create DataFrame with training/validation metrics
     training_data = pd.DataFrame(
         {
             "train_loss": train_losses,
@@ -408,15 +403,12 @@ def train_model(
         }
     )
 
-    # Ensure file extension is .csv
     if not train_val_data_path.endswith(".csv"):
         file_name, _ = os.path.splitext(train_val_data_path)
         train_val_data_path = file_name + ".csv"
 
-    # Ensure directory exists
     Path(train_val_data_path).parent.mkdir(parents=True, exist_ok=True)
 
-    # Save to CSV with headers
     training_data.to_csv(train_val_data_path, index=False)
     print("Training completed!")
     return (

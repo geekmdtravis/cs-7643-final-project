@@ -13,7 +13,6 @@ from src.data.dataset import ChestXrayDataset
 DATASET_MEAN = 0.4995
 DATASET_STD = 0.2480
 
-# Define the type for normalization mode
 NormalizationMode = Literal["imagenet", "dataset_specific", "none"]
 
 
@@ -62,10 +61,8 @@ def create_dataloader(
         logging.error("Number of workers must be a non-negative integer.")
         raise ValueError("num_workers must be a non-negative integer.")
 
-    # Base transform
     transform_list = [transforms.ToTensor()]
 
-    # Add normalization based on mode
     if normalization_mode == "imagenet":
         logging.info("create_dataloader: Using ImageNet normalization.")
         transform_list.append(
@@ -76,12 +73,10 @@ def create_dataloader(
             "create_dataloader: Using dataset norm "
             f"(Mean: {DATASET_MEAN:.4f}, Std: {DATASET_STD:.4f})."
         )
-        # Apply the same mean/std to all 3 channels since the dataset converts to RGB
         transform_list.append(
             transforms.Normalize(mean=[DATASET_MEAN] * 3, std=[DATASET_STD] * 3)
         )
     elif normalization_mode == "none":
-        # Only ToTensor is used
         logging.info("create_dataloader: No normalization applied.")
         pass
     else:

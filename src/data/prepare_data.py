@@ -52,25 +52,19 @@ def shuffle_split_save(
     Returns:
         None
     """
-    # Set seed for reproducibility
     set_seed(seed)
-
-    # Load and preprocess tabular data
     clinical_df = pd.read_csv(clinical_data)
     _clinical_df = create_working_tabular_df(clinical_df)
 
-    # First split off test set
     train_val_df, test_df = train_test_split(
         _clinical_df, test_size=test_size, seed=seed
     )
 
-    # Calculate val_size relative to remaining data to maintain desired ratio
     effective_val_size = val_size * (1 - test_size)
     train_df, val_df = train_test_split(
         train_val_df, test_size=effective_val_size, seed=seed
     )
 
-    # Apply normalization to all splits
     train_df = impute_and_normalize(train_df)
     val_df = impute_and_normalize(val_df)
     test_df = impute_and_normalize(test_df)
@@ -160,9 +154,7 @@ def copy_cached_imgs_to_artifacts(
         raise NotADirectoryError(error)
 
     clinical_df = pd.read_csv(clinical_data)
-    # Get set of valid image indices for faster lookup
     valid_images = set(clinical_df["imageIndex"].values)
-    # Filter image list before processing
     image_list = [
         img for img in kaggle_cache_cxr_dir.glob("*.png") if img.name in valid_images
     ]
@@ -208,7 +200,6 @@ def create_save_embedded_images(
             image_name = image.name
             pil_image = Image.open(image)
             image_tensor = TF.to_tensor(pil_image)
-            # Get matching clinical data row
             matching_row = clinical_df[clinical_df["imageIndex"] == image_name]
             if matching_row.empty:
                 error = (
