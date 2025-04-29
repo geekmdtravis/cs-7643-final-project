@@ -18,12 +18,10 @@ class TestDataloaders(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures before each test method."""
-        # Create temporary directories
         self.test_dir = tempfile.mkdtemp()
         self.images_dir = Path(self.test_dir) / "images"
         self.images_dir.mkdir(exist_ok=True)
 
-        # Create dummy images
         self.num_samples = 10
         self.image_size = (64, 64)
         self.image_names = []
@@ -36,7 +34,6 @@ class TestDataloaders(unittest.TestCase):
             )
             img.save(self.images_dir / img_name)
 
-        # Create dummy clinical data
         self.clinical_data = pd.DataFrame(
             {
                 "imageIndex": self.image_names,
@@ -80,10 +77,8 @@ class TestDataloaders(unittest.TestCase):
             num_workers=0,
         )
 
-        # Get first batch
         images, tabular, labels = next(iter(loader))
 
-        # Check batch shapes
         self.assertEqual(images.shape, (batch_size, 3, *self.image_size))
         self.assertEqual(tabular.shape, (batch_size, 4))
         self.assertEqual(labels.shape, (batch_size, 2))
@@ -122,7 +117,6 @@ class TestDataloaders(unittest.TestCase):
             num_workers=2,
         )
 
-        # Verify we can iterate through the dataloader
         for images, tabular, labels in loader:
             self.assertIsInstance(images, torch.Tensor)
             self.assertIsInstance(tabular, torch.Tensor)

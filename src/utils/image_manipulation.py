@@ -130,7 +130,6 @@ def embed_clinical_data_into_image(
     gender = tabular_batch[:, 2]  # patientGender (B,)
     xr_position = tabular_batch[:, 3]  # viewPosition (B,)
 
-    # Validate binary values using tensor operations
     if not torch.all((gender == 0) | (gender == 1)):
         invalid_gender = gender[(gender != 0) & (gender != 1)]
         raise ValueError(
@@ -144,27 +143,23 @@ def embed_clinical_data_into_image(
             f"Found invalid values: {invalid_pos.tolist()}"
         )
 
-    # Create a copy of the image batch to avoid modifying the original
-    # We can add .clone() if needed to avoid modifying the original tensor
     result = image_batch
     quad_size = matrix_size // 2
 
-    # Prepare the clinical data for broadcasting
     # Reshape from (B,) to (B, 1, 1) for broadcasting to (B, quad_size, quad_size)
     xr_follow_up = xr_follow_up.view(-1, 1, 1).expand(-1, quad_size, quad_size)
     age = age.view(-1, 1, 1).expand(-1, quad_size, quad_size)
     gender = gender.view(-1, 1, 1).expand(-1, quad_size, quad_size)
     xr_position = xr_position.view(-1, 1, 1).expand(-1, quad_size, quad_size)
 
-    # Embed the clinical data into all channels
     for c in range(result.shape[1]):  # Iterate over channels
-        # Top-left quadrant: Follow-up number (normalized)
+        # Top-left: Follow-up number (normalized)
         result[:, c, :quad_size, :quad_size] = xr_follow_up
-        # Top-right quadrant: Age (normalized)
+        # Top-right: Age (normalized)
         result[:, c, :quad_size, quad_size:matrix_size] = age
-        # Bottom-left quadrant: Gender (0/1)
+        # Bottom-left: Gender (0/1)
         result[:, c, quad_size:matrix_size, :quad_size] = gender
-        # Bottom-right quadrant: View position (0/1)
+        # Bottom-right: View position (0/1)
         result[:, c, quad_size:matrix_size, quad_size:matrix_size] = xr_position
 
     return result

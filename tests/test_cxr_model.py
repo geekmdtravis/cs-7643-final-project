@@ -11,11 +11,9 @@ from src.models.cxr_model import CXRModel, CXRModelConfig
 class TestCXRModelConfig(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
-        # Create a temporary directory
         self.test_dir = tempfile.mkdtemp()
         self.config_path = Path(self.test_dir) / "test_config.yaml"
 
-        # Write test config
         self.config_path.write_text(
             """
 model: vit_b_16
@@ -29,7 +27,6 @@ freeze_backbone: true
 
     def tearDown(self):
         """Clean up test fixtures."""
-        # Remove the temporary directory and its contents
         shutil.rmtree(self.test_dir)
 
     def test_default_initialization(self):
@@ -79,7 +76,6 @@ class TestCXRModel(unittest.TestCase):
         self.tabular_features = 4
         self.num_classes = 15
 
-        # Create dummy input data
         self.img_batch = torch.randn(
             self.batch_size, self.img_channels, self.img_size, self.img_size
         )
@@ -152,11 +148,10 @@ class TestCXRModel(unittest.TestCase):
         """Test backbone freezing functionality."""
         model = CXRModel(model="densenet121", freeze_backbone=True)
 
-        # Check that backbone parameters are frozen
         for name, param in model.model.named_parameters():
-            if "classifier" not in name:  # backbone parameters
+            if "classifier" not in name:
                 self.assertFalse(param.requires_grad)
-            else:  # classifier parameters
+            else:
                 self.assertTrue(param.requires_grad)
 
 

@@ -2,10 +2,11 @@
 Get system information
 """
 
-import re
-from dataclasses import dataclass
 import logging
 import platform
+import re
+from dataclasses import dataclass
+
 import psutil
 import torch
 
@@ -53,13 +54,12 @@ def get_system_info() -> SystemInfo:
         gpu_info = f"{torch.cuda.get_device_name(0)}"
         gpu_memory = f"{torch.cuda.get_device_properties(0).total_memory / 1e9:.2f} GB"
 
-    # Get CPU information using psutil
     cpu_model = "Unknown"
     try:
         cpu_info = platform.processor()
-        if cpu_info:  # If platform.processor() returns something useful
+        if cpu_info:
             cpu_model = cpu_info
-        else:  # Fallback to reading from /proc/cpuinfo on Linux
+        else:
             with open("/proc/cpuinfo", "r", encoding="utf-8") as f:
                 for line in f:
                     if line.startswith("model name"):
@@ -71,8 +71,8 @@ def get_system_info() -> SystemInfo:
     return SystemInfo(
         os=f"{platform.system()} ({platform.release()})",
         cpu_model=cpu_model,
-        cpu_cores=psutil.cpu_count(logical=False),  # Physical cores
-        cpu_threads=psutil.cpu_count(logical=True),  # Logical cores (threads)
+        cpu_cores=psutil.cpu_count(logical=False),
+        cpu_threads=psutil.cpu_count(logical=True),
         pytorch_version=torch.__version__,
         device=str(device),
         gpu_info=gpu_info,

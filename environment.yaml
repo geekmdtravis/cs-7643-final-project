@@ -31,3 +31,5 @@ dependencies:
       - psutil
       - black
       - flake8
+      - shap
+      - tabulate

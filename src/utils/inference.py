@@ -104,21 +104,16 @@ def find_optimal_thresholds(
     thresholds = {}
 
     for i, label in enumerate(labels):
-        # Extract label-specific values
         y_true_label = y_true[:, i]
         y_pred_label = y_pred_proba[:, i]
 
-        # Calculate prevalence
         prevalence = np.mean(y_true_label)
 
-        # Generate potential thresholds
         potential_thresholds = np.linspace(0.01, 0.99, 99)
 
-        best_threshold = 0.5  # Default
+        best_threshold = 0.5
         best_metric = 0
 
-        # For rare classes (low prevalence), prioritize recall
-        # For common classes, balance precision and recall
         if prevalence < 0.01:  # Very rare
             for threshold in potential_thresholds:
                 y_pred_binary = (y_pred_label >= threshold).astype(int)
@@ -161,54 +156,63 @@ def evaluate_model(preds: np.ndarray, labels: np.ndarray):
             - coverage_error: Coverage error
             - ranking_loss: Ranking loss
     """
-    # Find optimal thresholds for each class
     thresholds = find_optimal_thresholds(labels, preds, cfg.class_labels)
 
-    # Convert probabilities to binary predictions using optimal thresholds
     binary_preds = np.zeros_like(preds)
     for i, label in enumerate(cfg.class_labels):
         binary_preds[:, i] = (preds[:, i] >= thresholds[label]).astype(int)
 
-    # Initialize results dictionary and store thresholds
     results = {"thresholds": thresholds}
 
-    # 1. AUC Scores (per class)
-    auc_scores = []
-    for i in range(labels.shape[1]):
-        if len(np.unique(labels[:, i])) > 1:
-            auc = roc_auc_score(labels[:, i], preds[:, i])
-            auc_scores.append(auc)
-        else:
-            auc_scores.append(np.nan)
-    results["auc_scores"] = auc_scores
-
-    # 2. Classification Report
     report = classification_report(
         labels, binary_preds, target_names=cfg.class_labels, output_dict=True
     )
     results["report"] = report
 
-    # 3. Hamming Loss
+    auc_scores = []
+    valid_indices = []
+
+    for i in range(labels.shape[1]):
+        if len(np.unique(labels[:, i])) > 1:
+            auc = roc_auc_score(labels[:, i], preds[:, i])
+            auc_scores.append(auc)
+            valid_indices.append(i)
+        else:
+            auc_scores.append(np.nan)
+
+    results["auc_scores"] = auc_scores
+
+    if valid_indices:
+        results["micro_auc"] = roc_auc_score(
+            labels[:, valid_indices], preds[:, valid_indices], average="micro"
+        )
+        results["macro_auc"] = roc_auc_score(
+            labels[:, valid_indices], preds[:, valid_indices], average="macro"
+        )
+        results["weighted_auc"] = roc_auc_score(
+            labels[:, valid_indices], preds[:, valid_indices], average="weighted"
+        )
+    else:
+        results["micro_auc"] = np.nan
+        results["macro_auc"] = np.nan
+        results["weighted_auc"] = np.nan
+
     results["hamming_loss"] = hamming_loss(labels, binary_preds)
 
-    # 4. Jaccard Similarity (IoU)
     results["jaccard_similarity"] = jaccard_score(
         labels, binary_preds, average="samples"
     )
 
-    # 5. Average Precision
     results["avg_precision"] = average_precision_score(
         labels, preds, average="weighted"
     )
 
-    # 6. Confusion Matrices (one per class)
     confusion_matrices = []
     for i in range(labels.shape[1]):
         cm = confusion_matrix(labels[:, i], binary_preds[:, i])
         confusion_matrices.append(cm)
     results["confusion_matrices"] = confusion_matrices
 
-    # 7. Label Ranking Metrics
     results["lrap"] = label_ranking_average_precision_score(labels, preds)
     results["coverage_error"] = coverage_error(labels, preds)
     results["ranking_loss"] = label_ranking_loss(labels, preds)
@@ -230,22 +234,39 @@ def print_evaluation_results(
     """
     output = []
 
-    # Optimal Thresholds section
     output.append("Optimal Classification Thresholds:\n")
     for class_name, threshold in results["thresholds"].items():
         output.append(f"{class_name}: {threshold:.4f}")
 
-    # AUC Scores section
-    output.append("AUC Scores:\n")
-    for i, (class_name, auc) in enumerate(zip(cfg.class_labels, results["auc_scores"])):
-        if not np.isnan(auc):
-            output.append(f"AUC for {class_name}: {auc:.4f}")
-        else:
-            output.append(
-                f"AUC for {class_name}: Not applicable (only one class present)"
-            )
+    output.append("\nIndividual Class Performance:")
+    output.append(
+        "(AUC scores are binary classification metrics that handle class imbalance)\n"
+    )
 
-    # Overall Metrics
+    for i, (class_name, auc) in enumerate(zip(cfg.class_labels, results["auc_scores"])):
+        support = (
+            results["report"][class_name]["support"]
+            if class_name in results["report"]
+            else 0
+        )
+        if not np.isnan(auc):
+            output.append(f"{class_name}:")
+            output.append(f"  AUC Score: {auc:.4f}")
+            output.append(f"  Support: {support} samples")
+        else:
+            output.append(f"{class_name}:")
+            output.append("  AUC Score: Not applicable (only one class present)")
+            output.append(f"  Support: {support} samples")
+        output.append("")
+
+    output.append("Overall AUC Scores:")
+    output.append(f"Weighted Average AUC: {results['weighted_auc']:.4f}")
+    output.append("  (weights each class's AUC by its frequency)")
+    output.append(f"Macro Average AUC: {results['macro_auc']:.4f}")
+    output.append("  (gives equal weight to each class)")
+    output.append(f"Micro Average AUC: {results['micro_auc']:.4f}")
+    output.append("  (aggregates all predictions regardless of class)")
+
     output.append("\nOverall Metrics:")
     output.append(f"Hamming Loss: {results['hamming_loss']:.4f}")
     output.append(f"Jaccard Similarity: {results['jaccard_similarity']:.4f}")
@@ -254,10 +275,9 @@ def print_evaluation_results(
     output.append(f"Coverage Error: {results['coverage_error']:.4f}")
     output.append(f"Ranking Loss: {results['ranking_loss']:.4f}")
 
-    # Classification Report section
     output.append("\nClassification Report:\n")
     for class_name, metrics in results["report"].items():
-        if isinstance(metrics, dict):  # Skip the 'accuracy' and 'macro avg' entries
+        if isinstance(metrics, dict):
             output.append(f"Class: {class_name}")
             output.append(f"  Precision: {metrics['precision']:.4f}")
             output.append(f"  Recall: {metrics['recall']:.4f}")
@@ -265,7 +285,6 @@ def print_evaluation_results(
             output.append(f"  Support: {metrics['support']}")
             output.append("")
 
-    # Confusion Matrices
     output.append("\nConfusion Matrices (per class):")
     for i, (class_name, cm) in enumerate(
         zip(cfg.class_labels, results["confusion_matrices"])
@@ -275,13 +294,10 @@ def print_evaluation_results(
         output.append(" [FN TP]]")
         output.append(str(cm))
 
-    # Join all lines into a single string
     results_str = "\n".join(output)
 
-    # Print the results
     print(results_str)
 
-    # Save to file if save_path is provided
     if save_path:
         with open(save_path, "w") as f:
             f.write(results_str)
