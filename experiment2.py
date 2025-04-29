@@ -224,9 +224,13 @@ def analyze_convergence(model_name: str) -> Dict:
     """
     print(f"Retraining {model_name} to measure convergence time...")
 
+    # Check if this is an embedded model
+    is_embedded = "embedded" in model_name
+    base_model_name = model_name.replace("_embedded", "")
+
     # Create model config
     model_config = CXRModelConfig(
-        model=model_name,
+        model=base_model_name,
         hidden_dims=None,
         dropout=0.2,
         num_classes=15,
@@ -240,6 +244,8 @@ def analyze_convergence(model_name: str) -> Dict:
         lr=1e-4,
         epochs=200,  # Set a high number of epochs to allow for convergence
         batch_size=32,
+        use_embedded_imgs=is_embedded,  # Use embedded images if embedded model
+        matrix_size=32,
         plot_path=f"results/experiment2/convergence_{model_name}.png",
         best_model_path=f"results/experiment2/convergence_{model_name}_best.pth",
         last_model_path=f"results/experiment2/convergence_{model_name}_last.pth",
