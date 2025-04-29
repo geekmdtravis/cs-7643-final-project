@@ -35,28 +35,28 @@ MODELS = [
 MODEL_PATHS = {
     # DenseNet121 models
     "densenet121": {
-        "regular": "results/models/densenet121_best.pth",
+        "BCE": "results/models/densenet121_best.pth",
         "focal": "results/models/densenet121_focal_best.pth",
     },
     "densenet121_mm": {
-        "regular": "results/models/densenet121_mm_best.pth",
+        "BCE": "results/models/densenet121_mm_best.pth",
         "focal": "results/models/densenet121_mm_focal_best.pth",
     },
     "densenet121_embedded": {
-        "regular": "results/models/densenet121_embedded_best.pth",
+        "BCE": "results/models/densenet121_embedded_best.pth",
         "focal": "results/models/densenet121_embedded_focal_best.pth",
     },
     # ViT-B/32 models
     "vit_b_32": {
-        "regular": "results/models/vit_b_32_best.pth",
+        "BCE": "results/models/vit_b_32_best.pth",
         "focal": "results/models/vit_b_32_focal_best.pth",
     },
     "vit_b_32_mm": {
-        "regular": "results/models/vit_b_32_mm_best.pth",
+        "BCE": "results/models/vit_b_32_mm_best.pth",
         "focal": "results/models/vit_b_32_mm_focal_best.pth",
     },
     "vit_b_32_embedded": {
-        "regular": "results/models/vit_b_32_embedded_best.pth",
+        "BCE": "results/models/vit_b_32_embedded_best.pth",
         "focal": "results/models/vit_b_32_embedded_focal_best.pth",
     },
 }
@@ -84,26 +84,35 @@ def create_performance_plots(df: pd.DataFrame) -> None:
     """
     # Set the style
     plt.style.use("default")
-
+    
+    # Set font size for better readability
+    plt.rcParams.update({'font.size': 12})
+    
     # Create plots directory
     PLOTS_DIR.mkdir(parents=True, exist_ok=True)
 
     # 1. AUC Score Comparison
     plt.figure(figsize=(12, 6))
     sns.barplot(data=df, x="model_name", y="auc", hue="loss_type")
-    plt.title("AUC Score Comparison by Model and Loss Type")
+    plt.title("AUC Score Comparison by Model and Loss Type", fontsize=14)
     plt.xticks(rotation=45, ha="right")
+    plt.xlabel("Model", fontsize=12)
+    plt.ylabel("AUC Score", fontsize=12)
+    plt.legend(title="Loss Type", fontsize=10)
     plt.tight_layout()
-    plt.savefig(PLOTS_DIR / "auc_comparison.png")
+    plt.savefig(PLOTS_DIR / "auc_comparison.pdf")
     plt.close()
 
     # 2. F1 Score Comparison
     plt.figure(figsize=(12, 6))
     sns.barplot(data=df, x="model_name", y="f1", hue="loss_type")
-    plt.title("F1 Score Comparison by Model and Loss Type")
+    plt.title("F1 Score Comparison by Model and Loss Type", fontsize=14)
     plt.xticks(rotation=45, ha="right")
+    plt.xlabel("Model", fontsize=12)
+    plt.ylabel("F1 Score", fontsize=12)
+    plt.legend(title="Loss Type", fontsize=10)
     plt.tight_layout()
-    plt.savefig(PLOTS_DIR / "f1_comparison.png")
+    plt.savefig(PLOTS_DIR / "f1_comparison.pdf")
     plt.close()
 
     # 3. Combined Performance Metrics
@@ -130,22 +139,29 @@ def create_performance_plots(df: pd.DataFrame) -> None:
     )
 
     # Customize the plot
-    g.fig.suptitle("Performance Metrics Comparison by Model and Loss Type", y=1.02)
-
-    # Rotate x-axis labels for each subplot
+    g.fig.suptitle("Performance Metrics Comparison by Model and Loss Type", y=1.02, fontsize=14)
+    
+    # Rotate x-axis labels for each subplot and improve readability
     for ax in g.axes.flat:
         plt.setp(ax.get_xticklabels(), rotation=45, ha="right")
+        ax.set_xlabel("Model", fontsize=10)
+        ax.set_ylabel("Score", fontsize=10)
+        ax.tick_params(axis='both', which='major', labelsize=9)
+        ax.legend(title="Loss Type", fontsize=9)
 
     plt.tight_layout()
-    plt.savefig(PLOTS_DIR / "combined_metrics.png")
+    plt.savefig(PLOTS_DIR / "combined_metrics.pdf")
     plt.close()
 
     # 4. Model Type Comparison (DenseNet vs ViT)
     plt.figure(figsize=(10, 6))
     sns.boxplot(data=df, x="model_type", y="auc", hue="loss_type")
-    plt.title("AUC Score Distribution by Model Type and Loss Type")
+    plt.title("AUC Score Distribution by Model Type and Loss Type", fontsize=14)
+    plt.xlabel("Model Type", fontsize=12)
+    plt.ylabel("AUC Score", fontsize=12)
+    plt.legend(title="Loss Type", fontsize=10)
     plt.tight_layout()
-    plt.savefig(PLOTS_DIR / "model_type_comparison.png")
+    plt.savefig(PLOTS_DIR / "model_type_comparison.pdf")
     plt.close()
 
     # 5. Architecture Features Impact
@@ -154,9 +170,12 @@ def create_performance_plots(df: pd.DataFrame) -> None:
         plt.figure(figsize=(10, 6))
         sns.boxplot(data=df, x=feature, y="auc", hue="loss_type")
         feature_name = feature.replace("is_", "").title()
-        plt.title(f"AUC Score Distribution by {feature_name} and Loss Type")
+        plt.title(f"AUC Score Distribution by {feature_name} and Loss Type", fontsize=14)
+        plt.xlabel(feature_name, fontsize=12)
+        plt.ylabel("AUC Score", fontsize=12)
+        plt.legend(title="Loss Type", fontsize=10)
         plt.tight_layout()
-        plt.savefig(PLOTS_DIR / f"{feature}_impact.png")
+        plt.savefig(PLOTS_DIR / f"{feature}_impact.pdf")
         plt.close()
 
 
@@ -307,7 +326,7 @@ def main():
     # Evaluate all models
     results = []
     for model_key in MODELS:
-        for loss_type in ["regular", "focal"]:
+        for loss_type in ["BCE", "focal"]:
             model_path = MODEL_PATHS[model_key][loss_type]
             model_name = MODEL_NAMES[model_key]
             try:
