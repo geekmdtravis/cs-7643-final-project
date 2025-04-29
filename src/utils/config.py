@@ -14,7 +14,6 @@ from typing import Literal
 
 from dotenv import load_dotenv
 
-# Get the project root directory
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 ENV_PRESENT = load_dotenv(PROJECT_ROOT / ".env")
 
@@ -43,25 +42,19 @@ def setup_logging(
         max_bytes: Maximum size of log file before rotation
         backup_count: Number of backup files to keep
     """
-    # Convert string level to logging constant
     numeric_level = getattr(logging, log_level.upper(), logging.INFO)
 
-    # Create formatter
     formatter = logging.Formatter(log_format)
 
-    # Configure root logger
     root_logger = logging.getLogger()
     root_logger.setLevel(numeric_level)
 
-    # Remove existing handlers to avoid duplicates
     root_logger.handlers.clear()
 
-    # Console handler
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
     root_logger.addHandler(console_handler)
 
-    # File handler (if log_file specified)
     if log_file:
         log_file = Path(log_file)
         log_file.parent.mkdir(parents=True, exist_ok=True)
@@ -164,7 +157,6 @@ class Config:
 
     def __init__(self):
 
-        # Set up logging
         setup_logging(
             log_level=self.log_level, log_file=self.log_file, log_format=self.log_format
         )
@@ -176,15 +168,12 @@ class Config:
             logging.info("Environment variables loaded successfully.")
             logging.debug("Config: %s", self)
 
-        # Validate logging parameters
         valid_log_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         if self.log_level.upper() not in valid_log_levels:
             raise ValueError(f"log_level must be one of {valid_log_levels}")
 
         if not isinstance(self.log_format, str):
             raise TypeError("log_format must be a string")
-
-        # Validate other parameters
 
         if self.device not in ["cuda", "cpu"]:
             raise ValueError("device must be either 'cuda' or 'cpu'")

@@ -122,16 +122,13 @@ def create_working_tabular_df(df: pd.DataFrame) -> pd.DataFrame:
             - viewPosition: Binary encoded position (0=PA, 1=AP)
             - label_{condition}: One-hot encoded disease labels (15 columns)
     """
-    # Select and rename relevant columns
     working_df = pd.DataFrame()
     working_df["imageIndex"] = df["Image Index"]
     working_df["followUpNumber"] = df["Follow-up #"]
     working_df["patientAge"] = df["Patient Age"].apply(convert_agestr_to_years)
 
-    # Convert gender to binary (case-insensitive)
     working_df["patientGender"] = df["Patient Gender"].str.upper().map({"M": 0, "F": 1})
 
-    # Convert view position to binary (case-insensitive)
     working_df["viewPosition"] = df["View Position"].str.upper().map({"PA": 0, "AP": 1})
     label_names = [
         "label_atelectasis",
@@ -150,15 +147,13 @@ def create_working_tabular_df(df: pd.DataFrame) -> pd.DataFrame:
         "label_pneumonia",
         "label_pneumothorax",
     ]
-    # Generate one-hot encoded labels
     for idx, row in df.iterrows():
         labels = generate_image_labels(row["Finding Labels"])
-        if idx == 0:  # First iteration, create column names
+        if idx == 0:
 
             for name in label_names:
                 working_df[name] = 0
 
-        # Update the label columns for this row
         for col, value in zip(label_names, labels):
             working_df.at[idx, col] = value.item()
 
