@@ -16,17 +16,13 @@ from src.utils.grad_cam import (
 )
 
 
-def main():
-    torch.manual_seed(42)
-    np.random.seed(42)
+def run_analysis(model_name: str, model_path: str, results_dir: Path):
+    """Run Grad-CAM analysis for a specific model."""
+    logger = logging.getLogger(__name__)
+    logger.info(f"Running analysis for {model_name}")
 
     # Load configuration
     cfg = Config()
-    logger = logging.getLogger(__name__)
-
-    # Create results directory
-    results_dir = Path("results/clinical_attention")
-    results_dir.mkdir(parents=True, exist_ok=True)
 
     # Create test dataloader with embedded images
     test_loader = create_dataloader(
@@ -39,7 +35,7 @@ def main():
 
     # Initialize model
     model_config = CXRModelConfig(
-        model="densenet121",  # You can change this to any supported model
+        model=model_name,
         hidden_dims=(),
         dropout=0.2,
         num_classes=15,
@@ -48,12 +44,8 @@ def main():
     )
     model = CXRModel(**model_config.as_dict()).to(cfg.device)
 
-    PATH = "/tmp/cs7643_final_share/travis_results/results/tuning/"
     # Load trained model weights - using strict=False to handle mismatched keys
-    model_path = PATH + "embd_densenet121_lr_1e-05_bs_32_do_0.2_hd_None_ms_32_best.pth"
     state_dict = torch.load(model_path)
-
-    # Load the state dict with strict=False to handle any remaining mismatches
     model.load_state_dict(state_dict, strict=False)
     logger.info("Model loaded successfully")
 
@@ -65,7 +57,7 @@ def main():
         logger.info(f"  {layer}")
 
     # Find a suitable layer for Grad-CAM
-    preferred_patterns = ["denseblock4", "denseblock3", "conv", "features"]
+    preferred_patterns = ["denseblock4", "denseblock3", "conv", "features", "blocks"] if model_name == "densenet121" else ["blocks", "attn", "mlp"]
     layer_name = find_suitable_layer(model, preferred_patterns)
     logger.info(f"Selected layer for Grad-CAM: {layer_name}")
 
@@ -97,7 +89,7 @@ def main():
         class_name = cfg.class_labels[target_class]
 
         # Analyze attention for this image
-        save_path = results_dir / f"clinical_attention_sample_{i}_{class_name}.png"
+        save_path = results_dir / f"clinical_attention_sample_{i}_{class_name}.pdf"
         quadrant_attention = visualize_clinical_attention(
             model=model,
             image=images,
@@ -154,6 +146,40 @@ def main():
         for class_name, predictions in class_predictions.items():
             avg_prediction = np.mean(predictions)
             f.write(f"  {class_name}: {avg_prediction:.4f}\n")
+
+
+def main():
+    torch.manual_seed(42)
+    np.random.seed(42)
+
+    # Load configuration
+    cfg = Config()
+    logger = logging.getLogger(__name__)
+
+    # Create base results directory
+    base_results_dir = Path("results/experiment8")
+    base_results_dir.mkdir(parents=True, exist_ok=True)
+
+    # Define models to analyze
+    models = [
+        {
+            "name": "densenet121",
+            "path": "results/models/densenet121_embedded_best.pth",
+            "results_dir": base_results_dir / "densenet121"
+        }
+    ]
+
+    # Run analysis for each model
+    for model_info in models:
+        # Create results directory
+        model_info["results_dir"].mkdir(parents=True, exist_ok=True)
+        
+        # Run analysis
+        run_analysis(
+            model_name=model_info["name"],
+            model_path=model_info["path"],
+            results_dir=model_info["results_dir"]
+        )
 
 
 if __name__ == "__main__":
