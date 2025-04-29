@@ -18,12 +18,10 @@ class TestChestXrayDataset(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures before each test method."""
-        # Create temporary directories
         self.test_dir = tempfile.mkdtemp()
         self.images_dir = Path(self.test_dir) / "images"
         self.images_dir.mkdir(exist_ok=True)
 
-        # Create dummy images
         self.num_samples = 3
         self.image_size = (64, 64)
         self.image_names = []
@@ -36,7 +34,6 @@ class TestChestXrayDataset(unittest.TestCase):
             )
             img.save(self.images_dir / img_name)
 
-        # Create dummy clinical data
         self.clinical_data = pd.DataFrame(
             {
                 "imageIndex": self.image_names,
@@ -52,7 +49,6 @@ class TestChestXrayDataset(unittest.TestCase):
         self.clinical_data_path = Path(self.test_dir) / "clinical_data.csv"
         self.clinical_data.to_csv(self.clinical_data_path, index=False)
 
-        # Create dataset instance
         self.dataset = ChestXrayDataset(
             clinical_data=self.clinical_data_path, cxr_images_dir=self.images_dir
         )
@@ -77,14 +73,13 @@ class TestChestXrayDataset(unittest.TestCase):
         idx = 0
         image, tabular_features, labels = self.dataset[idx]
 
-        # Check types and shapes
         self.assertIsInstance(image, torch.Tensor)
         self.assertIsInstance(tabular_features, torch.Tensor)
         self.assertIsInstance(labels, torch.Tensor)
 
-        self.assertEqual(image.shape, (3, *self.image_size))  # RGB image
-        self.assertEqual(tabular_features.shape, (4,))  # 4 tabular features
-        self.assertEqual(labels.shape, (2,))  # 2 labels
+        self.assertEqual(image.shape, (3, *self.image_size))
+        self.assertEqual(tabular_features.shape, (4,))
+        self.assertEqual(labels.shape, (2,))
 
     def test_custom_transform(self):
         """Test dataset with custom transform."""

@@ -29,13 +29,11 @@ class TestPadImage(unittest.TestCase):
 
     def test_invalid_input_shape(self):
         """Test handling of invalid input tensor shapes."""
-        # Test 2D tensor
         with self.assertRaises(ValueError):
             pad_image(torch.zeros(32, 32))
 
     def test_batch_padding(self):
         """Test padding functionality with batched input."""
-        # Create a batch of 4 images
         batch_image = torch.zeros(4, 3, 32, 32)
         result = pad_image(batch_image)
         expected_shape = (4, 3, 64, 64)  # 32 + 16 + 16 = 64 for both dimensions
@@ -47,14 +45,14 @@ class TestPadImage(unittest.TestCase):
         batch_image = torch.ones(batch_size, 3, 32, 32)  # All ones
         result = pad_image(batch_image)
 
-        # Check corners (should be part of padding) for all images in batch
+        # Check corners
         for i in range(batch_size):
             self.assertTrue(torch.allclose(result[i, :, :16, :16], torch.tensor(0.0)))
             self.assertTrue(torch.allclose(result[i, :, :16, -16:], torch.tensor(0.0)))
             self.assertTrue(torch.allclose(result[i, :, -16:, :16], torch.tensor(0.0)))
             self.assertTrue(torch.allclose(result[i, :, -16:, -16:], torch.tensor(0.0)))
 
-            # Check that center content is preserved (all ones)
+            # Check that center content is preserved
             self.assertTrue(
                 torch.allclose(
                     result[i, :, 16:48, 16:48],
@@ -74,7 +72,7 @@ class TestPadImage(unittest.TestCase):
     def test_padding_values(self):
         """Test that padding values are zero."""
         result = pad_image(self.image)
-        # Check corners (should be part of padding)
+        # Check corners
         self.assertTrue(torch.allclose(result[:, :16, :16], torch.tensor(0.0)))
         self.assertTrue(torch.allclose(result[:, :16, -16:], torch.tensor(0.0)))
         self.assertTrue(torch.allclose(result[:, -16:, :16], torch.tensor(0.0)))
@@ -91,18 +89,16 @@ class TestEmbedClinicalData(unittest.TestCase):
 
     def test_basic_functionality(self):
         """Test basic embedding with valid inputs."""
-        tabular_data = torch.tensor([[0.5, 0.5, 0, 0]])  # Single sample
+        tabular_data = torch.tensor([[0.5, 0.5, 0, 0]])
         result = embed_clinical_data_into_image(self.single_image, tabular_data)
 
-        # Check shape preservation
         self.assertEqual(result.shape, self.single_image.shape)
 
-        # Check embedded values in each quadrant
         quad_size = 8  # matrix_size=16 // 2
         self.assertTrue(
             torch.allclose(
                 result[0, 0, :quad_size, :quad_size], torch.tensor(0.5)
-            )  # Follow-up
+            )  # Follow-ups
         )
         self.assertTrue(
             torch.allclose(
@@ -179,8 +175,7 @@ class TestEmbedClinicalData(unittest.TestCase):
         """Test matrix size validation."""
         tabular_data = torch.tensor([[0.5, 0.5, 0, 0]])
 
-        # Test invalid sizes
-        invalid_sizes = [-1, 0, 15]  # negative, zero, odd
+        invalid_sizes = [-1, 0, 15]
         for size in invalid_sizes:
             with self.assertRaises(ValueError):
                 embed_clinical_data_into_image(
@@ -199,7 +194,6 @@ class TestEmbedClinicalData(unittest.TestCase):
         tabular_data = torch.tensor([[0.5, 0.5, 0, 0]])
         result = embed_clinical_data_into_image(self.single_image, tabular_data)
 
-        # Compare all channels to first channel
         for c in range(1, result.shape[1]):
             self.assertTrue(torch.equal(result[:, 0, :16, :16], result[:, c, :16, :16]))
 

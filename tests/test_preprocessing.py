@@ -1,18 +1,20 @@
 """Unit tests for preprocessing functions."""
 
 import random
-import unittest
 import shutil
 import tempfile
+import unittest
+
+import numpy as np
 import pandas as pd
 import torch
-import numpy as np
+
 from src.utils.preprocessing import (
-    generate_image_labels,
     convert_agestr_to_years,
     create_working_tabular_df,
-    set_seed,
+    generate_image_labels,
     randomize_df,
+    set_seed,
     train_test_split,
 )
 
@@ -46,7 +48,6 @@ class TestPreprocessing(unittest.TestCase):
             self.assertEqual(labels.shape, (15,))
             self.assertEqual(labels.dtype, torch.float32)
             self.assertEqual(labels[idx], 1)
-            # Verify other positions are 0
             zero_positions = list(range(15))
             zero_positions.remove(idx)
             for pos in zero_positions:
@@ -241,11 +242,9 @@ class TestTabularDataPreprocessing(unittest.TestCase):
         """Test one-hot encoding of finding labels."""
         result_df = create_working_tabular_df(self.test_df)
 
-        # Test Cardiomegaly encoding
         self.assertEqual(result_df["label_cardiomegaly"].iloc[0], 1)
         self.assertEqual(result_df["label_no_finding"].iloc[0], 0)
 
-        # Test No Finding encoding
         self.assertEqual(result_df["label_cardiomegaly"].iloc[1], 0)
         self.assertEqual(result_df["label_no_finding"].iloc[1], 1)
 
@@ -291,7 +290,7 @@ class TestRandomization(unittest.TestCase):
 
     def test_different_order(self):
         """Test that the order is actually randomized."""
-        set_seed(42)  # Set seed for reproducibility
+        set_seed(42)
         result_df = randomize_df(self.test_df)
         # Check if at least one row is in a different position
         any_different = False
