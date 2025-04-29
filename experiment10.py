@@ -17,7 +17,6 @@ from src.utils import (
 
 cfg = Config()
 
-# Models to test (from experiment 2)
 MODELS = [
     "densenet121",
     "densenet121_mm",
@@ -32,20 +31,16 @@ def train_and_evaluate(model_name: SupportedModels):
     """Train and evaluate a model with Focal Loss."""
     print(f"\nTraining {model_name} with Focal Loss...")
 
-    # Check if this is an embedded model
     is_embedded = "_embedded" in model_name
 
-    # Get base model name
     base_model_name = model_name
     if is_embedded:
         base_model_name = model_name.replace("_embedded", "")
 
-    # Configure model
     model_config = CXRModelConfig(
         model=base_model_name, freeze_backbone=True, hidden_dims=()
     )
 
-    # Train model with hyperparameters from experiment 2
     loss, auc, epoch_time, total_time, epoch_count, trained_model = train_model(
         model_config=model_config,
         lr=1e-4,
@@ -69,8 +64,6 @@ def train_and_evaluate(model_name: SupportedModels):
     print(f"- Total Training Time: {total_time:.2f} seconds")
     print(f"- Epochs Run: {epoch_count}")
 
-    # Create test dataloader
-    # Determine which image directory to use based on whether it's an embedded model
     if is_embedded:
         test_img_dir = cfg.embedded32_test_dir
     else:
@@ -84,14 +77,11 @@ def train_and_evaluate(model_name: SupportedModels):
         normalization_mode="imagenet",
     )
 
-    # Run inference
     print("\nRunning inference on test set...")
     preds, labels = run_inference(model=trained_model, test_loader=test_loader)
 
-    # Evaluate results
     results = evaluate_model(preds=preds, labels=labels)
 
-    # Save results
     results_path = f"results/experiment10/evaluation_{model_name}_focal.txt"
     print_evaluation_results(results=results, save_path=results_path)
 
@@ -99,16 +89,13 @@ def train_and_evaluate(model_name: SupportedModels):
 
 
 def main():
-    # Create results directory
     Path("results/experiment10").mkdir(exist_ok=True)
     Path("results/models").mkdir(exist_ok=True)
     Path("results/experiment10/plots").mkdir(exist_ok=True)
 
-    # Train and evaluate each model with Focal Loss
     for model_name in MODELS:
         results = train_and_evaluate(model_name)
 
-        # Print results
         print(f"\nResults for {model_name}:")
         print("Metric          | Value")
         print("-" * 30)
