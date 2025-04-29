@@ -15,7 +15,13 @@ import seaborn as sns
 from tabulate import tabulate
 
 from src.data import create_dataloader
-from src.utils import Config, evaluate_model, load_model, run_inference
+from src.utils import (
+    Config,
+    evaluate_model,
+    load_model,
+    print_evaluation_results,
+    run_inference,
+)
 
 OUTPUT_DIR = Path("results/experiment3")
 if not OUTPUT_DIR.exists():
@@ -305,6 +311,9 @@ def main():
                     model_path, model_name, loss_type
                 )
                 results.append(model_results)
+                print_evaluation_results(
+                    model_results, f"results/experiment3/{model_key}results.txt"
+                )
             except Exception as e:
                 print(f"Error evaluating {model_name} ({loss_type} loss): {str(e)}")
 
