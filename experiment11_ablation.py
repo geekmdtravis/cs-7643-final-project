@@ -136,10 +136,9 @@ def main(model_path):
     plt.ylabel("Ablated Feature", fontsize=14)
     plt.xlabel("Class", fontsize=18)
 
+    # https://stackoverflow.com/questions/14852821/aligning-rotated-xticklabels-with-their-respective-xticks
     ax = plt.gca()
-    ax.set_xticklabels(
-        ax.get_xticklabels(), rotation=30, ha="right"
-    )  # https://stackoverflow.com/questions/14852821/aligning-rotated-xticklabels-with-their-respective-xticks
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=30, ha="right")
 
     plt.tight_layout()
 
